@@ -1,11 +1,12 @@
 COMPOSE_DEV := docker compose --env-file backend/.env -f docker-compose.yml -f docker-compose.dev.yml
 SVC         := backend
+FE_SVC      := frontend
 
-.PHONY: help dev down status logs build test coverage migrate upgrade downgrade seed
+.PHONY: help dev down status logs build test coverage test-frontend coverage-frontend migrate upgrade downgrade seed
 
 help:
 	@echo ""
-	@echo "Stack (requires backend/.env, copy it from backend/.env.example):"
+	@echo "Stack (requires backend/.env and frontend/.env, copy them from .env.example):"
 	@echo "  make dev                - up --build (renews node_modules volume)"
 	@echo "  make down               - down"
 	@echo "  make status             - ps"
@@ -23,6 +24,10 @@ help:
 	@echo ""
 	@echo "Demo data:"
 	@echo "  make seed               - populate database with dummy products"
+	@echo ""
+	@echo "Frontend (React + Jest):"
+	@echo "  make test-frontend      - jest (run once)"
+	@echo "  make coverage-frontend  - jest --coverage (term + coverage/)"
 
 dev:
 	$(COMPOSE_DEV) up --build --renew-anon-volumes
@@ -60,3 +65,9 @@ downgrade:
 
 seed:
 	$(COMPOSE_DEV) exec $(SVC) npm run seed
+
+test-frontend:
+	$(COMPOSE_DEV) exec $(FE_SVC) npm test -- --watchAll=false
+
+coverage-frontend:
+	$(COMPOSE_DEV) exec $(FE_SVC) npm run test:cov

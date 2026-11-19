@@ -97,22 +97,26 @@ Postman collection: [`docs/postman_collection.json`](docs/postman_collection.jso
 Jest `^30` with a `coverageThreshold` of 80% (statements, branches, functions, lines). The build fails if coverage drops below it.
 
 ```bash
-make test        # run once (stack must be running)
-make coverage    # with coverage report
+make test                # backend, run once (stack must be running)
+make coverage            # backend, with coverage report
+make test-frontend       # frontend, run once
+make coverage-frontend   # frontend, with coverage report
 ```
 
 ---
 
 ## 6. Local setup
 
-**Requirements:** Docker with Compose, `make`, and Node.js `24.19.0` (`nvm use` reads `backend/.nvmrc`) only if you run outside Docker.
+**Requirements:** Docker with Compose, `make`, and Node.js `24.19.0` (`nvm use` reads the `.nvmrc` of each project) only if you run outside Docker.
 
 ```bash
 cp backend/.env.example backend/.env   # adjust values if needed
-make dev                               # PostgreSQL + backend with hot reload
+cp frontend/.env.example frontend/.env
+make dev                               # PostgreSQL + backend + frontend with hot reload
 make upgrade                           # run migrations (in another terminal)
 make seed                              # load demo products (idempotent)
-curl http://localhost:3000/api/health
+curl http://localhost:3000/api/health  # backend
+# frontend: http://localhost:5173
 ```
 
 ### Make targets
@@ -126,6 +130,8 @@ curl http://localhost:3000/api/health
 | `make build` | Rebuild the backend image |
 | `make test` | Run Jest once |
 | `make coverage` | Run Jest with coverage |
+| `make test-frontend` | Run the frontend Jest suite once |
+| `make coverage-frontend` | Run the frontend Jest suite with coverage |
 | `make migrate m="Name"` | Generate a migration from entity changes and run it |
 | `make upgrade` | Run pending migrations |
 | `make downgrade` | Revert the last migration |
@@ -149,6 +155,10 @@ curl http://localhost:3000/api/health
 ```bash
 cd backend && nvm use && npm ci
 npm run start:dev    # needs a reachable PostgreSQL configured in backend/.env
+npm run test:cov
+
+cd ../frontend && nvm use && npm ci
+npm run dev          # http://localhost:5173
 npm run test:cov
 ```
 
