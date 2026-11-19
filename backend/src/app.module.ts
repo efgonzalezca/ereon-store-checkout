@@ -7,6 +7,7 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { ResultInterceptor } from './shared/interceptors/result.interceptor';
+import { ProductsModule } from './modules/products/products.module';
 import { AppLoggerModule } from './shared/logger/logger.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { AppLoggerModule } from './shared/logger/logger.module';
     }),
     DatabaseModule,
     HealthModule,
+    ProductsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -1,21 +1,10 @@
-import {
-  Body,
-  Controller,
-  Get,
-  INestApplication,
-  Module,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
 import { Server } from 'node:http';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { Test } from '@nestjs/testing';
 import { IsString } from 'class-validator';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/app.setup';
-import { DatabaseModule } from '../src/database/database.module';
 import { NotFoundError } from '../src/shared/rop/errors';
 import { err, ok, Result } from '../src/shared/rop/result';
+import { createTestApp } from './create-test-app';
 
 class EchoDto {
   @IsString()
@@ -45,26 +34,12 @@ class ProbeController {
   }
 }
 
-@Module({})
-class NoDatabaseModule {}
-
 describe('App (e2e)', () => {
   let app: INestApplication;
   let server: Server;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-      controllers: [ProbeController],
-    })
-      .overrideModule(DatabaseModule)
-      .useModule(NoDatabaseModule)
-      .compile();
-
-    const nestApp = moduleRef.createNestApplication<NestExpressApplication>();
-    configureApp(nestApp);
-    await nestApp.init();
-    app = nestApp;
+    app = await createTestApp({ controllers: [ProbeController] });
     server = app.getHttpServer() as Server;
   });
 
@@ -139,7 +114,7 @@ describe('App (e2e)', () => {
     }
 
     const statuses: number[] = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 12; i++) {
       statuses.push((await request(server).get('/api/probe/found')).status);
     }
 

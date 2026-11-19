@@ -4,8 +4,14 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "traceId", "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "traceId",
+      "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+    }
   ],
   "item": [
     {
@@ -15,11 +21,21 @@
           "name": "GET /api/health",
           "request": {
             "method": "GET",
-            "header": [{ "key": "X-Trace-Id", "value": "{{traceId}}" }],
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
             }
           },
           "response": [
@@ -27,21 +43,238 @@
               "name": "200 OK",
               "originalRequest": {
                 "method": "GET",
-                "header": [{ "key": "X-Trace-Id", "value": "{{traceId}}" }],
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
                 "url": {
                   "raw": "{{baseUrl}}/api/health",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "health"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "health"
+                  ]
                 }
               },
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
               "header": [
-                { "key": "Content-Type", "value": "application/json; charset=utf-8" },
-                { "key": "X-Trace-Id", "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301" }
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
               ],
               "body": "{\n  \"status\": \"ok\",\n  \"uptime\": 42.318,\n  \"timestamp\": \"2026-01-15T12:00:00.000Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "GET /api/products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "[\n  {\n    \"id\": \"00000000-0000-4000-8000-000000000001\",\n    \"name\": \"Wireless Headphones\",\n    \"description\": \"Over-ear headphones with noise cancelling and 30h battery.\",\n    \"priceInCents\": 38990000,\n    \"stock\": 25,\n    \"imageUrl\": \"/images/products/wireless-headphones.webp\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "GET /api/products/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/00000000-0000-4000-8000-000000000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "00000000-0000-4000-8000-000000000001"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/00000000-0000-4000-8000-000000000001",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "00000000-0000-4000-8000-000000000001"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"id\": \"00000000-0000-4000-8000-000000000001\",\n  \"name\": \"Wireless Headphones\",\n  \"description\": \"Over-ear headphones with noise cancelling and 30h battery.\",\n  \"priceInCents\": 38990000,\n  \"stock\": 25,\n  \"imageUrl\": \"/images/products/wireless-headphones.webp\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/00000000-0000-4000-8000-0000000000ff",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "00000000-0000-4000-8000-0000000000ff"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 404,\n  \"code\": \"NOT_FOUND\",\n  \"message\": \"Product 00000000-0000-4000-8000-0000000000ff not found\"\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/products/not-a-uuid",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "products",
+                    "not-a-uuid"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
             }
           ]
         }

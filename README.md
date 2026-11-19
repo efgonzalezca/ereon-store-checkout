@@ -25,9 +25,11 @@ Hexagonal architecture (Ports & Adapters): each module separates `domain/`, `app
 ```text
 backend/src/
 ├── config/        # environment validation
-├── database/      # TypeORM connection
+├── database/      # TypeORM connection, data-source, migrations and seeds
 ├── health/        # GET /api/health
-├── modules/       # Pending: products, customers, transactions, deliveries
+├── modules/
+│   └── products/  # domain/, application/use-cases/, infrastructure/
+│                  # Pending: customers, transactions, deliveries
 └── shared/
     ├── rop/          # Result<T, E> and typed domain errors
     ├── interceptors/ # ResultInterceptor
@@ -85,6 +87,8 @@ Postman collection: [`docs/postman_collection.json`](docs/postman_collection.jso
 | Method | Path | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Healthcheck |
+| `GET` | `/api/products` | List products |
+| `GET` | `/api/products/:id` | Get a product by UUID (`400` if not a UUID, `404` if it does not exist) |
 
 ---
 
@@ -106,6 +110,8 @@ make coverage    # with coverage report
 ```bash
 cp backend/.env.example backend/.env   # adjust values if needed
 make dev                               # PostgreSQL + backend with hot reload
+make upgrade                           # run migrations (in another terminal)
+make seed                              # load demo products (idempotent)
 curl http://localhost:3000/api/health
 ```
 
@@ -113,13 +119,17 @@ curl http://localhost:3000/api/health
 
 | Target | Description |
 | :--- | :--- |
-| `make dev` | Build and start the stack |
+| `make dev` | Build and start the stack (renews the `node_modules` volume so new dependencies are picked up) |
 | `make down` | Stop the stack |
 | `make status` | Show running services |
 | `make logs` | Follow logs (JSON lines on stdout) |
 | `make build` | Rebuild the backend image |
 | `make test` | Run Jest once |
 | `make coverage` | Run Jest with coverage |
+| `make migrate m="Name"` | Generate a migration from entity changes and run it |
+| `make upgrade` | Run pending migrations |
+| `make downgrade` | Revert the last migration |
+| `make seed` | Load demo products; safe to run more than once and it never resets existing stock |
 
 ### Environment variables (`backend/.env.example`)
 
