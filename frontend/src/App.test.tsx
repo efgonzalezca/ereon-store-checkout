@@ -1,16 +1,20 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { App } from './App';
+import { renderWithStore } from './test/render-with-store';
 
 describe('App shell', () => {
-  it('renders the store header and main landmarks', () => {
-    render(<App />);
+  it('renders the store header and main landmarks', async () => {
+    renderWithStore(<App />, jest.fn().mockResolvedValue({ data: [] }));
 
     expect(
       screen.getByRole('heading', { name: 'Ereon Store' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Products' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps the mobile-first layout contract that prevents horizontal overflow', () => {

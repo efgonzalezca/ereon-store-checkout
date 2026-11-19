@@ -50,7 +50,23 @@ A global `GlobalExceptionFilter` handles only unexpected errors: it logs them an
 
 ### Frontend (React + Redux Toolkit)
 
-_Pending._
+The frontend is a React 19 single-page app built with Vite and TypeScript. State lives in a Redux Toolkit store with a one-way data flow: components dispatch actions, reducers update the store, and components read it back through selectors. Each feature keeps its slice, components and styles together under `features/`.
+
+```text
+frontend/src/
+├── app/               # store and typed hooks
+├── config/            # environment parsing (VITE_API_URL)
+├── features/products/ # slice, catalog, product card and detail modal
+├── shared/            # axios client, currency formatting, modal
+└── test/              # Jest setup and render helpers
+```
+
+How the pieces fit together:
+
+- **Catalog and product detail.** The catalog is a responsive grid of product cards. Choosing one opens its detail in a modal, so the user keeps the context of the catalog behind it. The modal is a native `<dialog>`, which provides focus trapping and `Esc` handling out of the box, and it is closed with its close button; a stray tap outside it does not discard the selection. Quantity is picked from a short list that goes from 1 up to the available stock, so no input validation is needed, and the pay button is disabled when a product is out of stock.
+- **Data access.** The axios client is injected into the store as the thunk extra argument. Only `main.tsx` reads the environment, which lets tests run against a fake client without mocking modules.
+- **Layout.** Designed mobile first for a 375×667 viewport using Flexbox and Grid, without hiding overflow. From 768 px the modal places the image beside the product details. Colors and spacing are CSS variables in `index.css`.
+- **Prices and images.** The API returns prices in cents and the UI formats them as Colombian pesos. Product images are square 640×640 `.webp` files (under 25 kB each) in `frontend/public/images/products/`, served by the same origin as the app; the database only stores their relative path.
 
 ---
 
@@ -149,6 +165,12 @@ curl http://localhost:3000/api/health  # backend
 | `DB_HOST`, `DB_PORT` | PostgreSQL host and port |
 | `DB_USER`, `DB_PASS`, `DB_NAME` | PostgreSQL credentials and database |
 | `DB_SSL` | `true` to enable SSL (certificate is verified) |
+
+### Environment variables (`frontend/.env.example`)
+
+| Variable | Description |
+| :--- | :--- |
+| `VITE_API_URL` | Base URL of the backend API (must be `http` or `https`) |
 
 ### Running without Docker
 

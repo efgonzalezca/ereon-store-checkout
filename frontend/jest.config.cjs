@@ -8,6 +8,7 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.jest.json' }],
   },
   moduleNameMapper: {
+    '^axios$': '<rootDir>/node_modules/axios/dist/node/axios.cjs',
     '\\.css$': '<rootDir>/src/test/style-stub.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
