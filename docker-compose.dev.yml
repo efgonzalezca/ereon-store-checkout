@@ -1,0 +1,20 @@
+services:
+  db:
+    ports:
+      - "${DB_PORT}:5432"
+
+  backend:
+    command: npm run start:dev
+    ports:
+      - "${PORT}:${PORT}"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
