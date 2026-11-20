@@ -8,7 +8,15 @@ import { createHttpClient } from './shared/api/http-client';
 import './index.css';
 
 const { apiUrl } = parseEnv(import.meta.env);
-const store = setupStore({ api: createHttpClient(apiUrl) });
+function getStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+const store = setupStore({ api: createHttpClient(apiUrl) }, getStorage());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

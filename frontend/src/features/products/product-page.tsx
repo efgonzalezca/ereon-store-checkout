@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
-import { ProductCard } from './product-card';
-import { ProductDetailModal } from './product-detail-modal';
+import { ProductCard } from './components/product-card';
+import { ProductDetailModal } from './components/product-detail-modal';
 import {
   fetchProducts,
   productSelected,
@@ -10,7 +10,7 @@ import {
   selectProductsError,
   selectProductsStatus,
   selectSelectedProduct,
-} from './products-slice';
+} from './state/products-slice';
 import './product-page.css';
 
 export function ProductPage() {

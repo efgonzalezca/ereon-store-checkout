@@ -1,3 +1,4 @@
+import { CheckoutFlow } from '@/features/checkout/checkout-flow';
 import { ProductPage } from '@/features/products/product-page';
 
 export function App() {
@@ -10,6 +11,7 @@ export function App() {
       </header>
       <main className="app__main app__container">
         <ProductPage />
+        <CheckoutFlow />
       </main>
     </div>
   );

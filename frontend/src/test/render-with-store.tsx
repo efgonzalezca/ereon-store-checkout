@@ -2,8 +2,9 @@ import { render } from '@testing-library/react';
 import { ReactElement } from 'react';
 import { Provider } from 'react-redux';
 import { setupStore } from '@/app/store';
+import { StorageLike } from '@/features/checkout/state/checkout-storage';
 import { ThunkExtra } from '@/app/thunk-extra';
-import { Product } from '@/features/products/product.types';
+import { Product } from '@/features/products/state/product.types';
 
 export const products: Product[] = [
   {
@@ -28,7 +29,11 @@ export function createFakeApi(get: jest.Mock): ThunkExtra['api'] {
   return { get } as unknown as ThunkExtra['api'];
 }
 
-export function renderWithStore(ui: ReactElement, get: jest.Mock) {
-  const store = setupStore({ api: createFakeApi(get) });
+export function renderWithStore(
+  ui: ReactElement,
+  get: jest.Mock,
+  storage: StorageLike | null = null,
+) {
+  const store = setupStore({ api: createFakeApi(get) }, storage);
   return { store, ...render(<Provider store={store}>{ui}</Provider>) };
 }

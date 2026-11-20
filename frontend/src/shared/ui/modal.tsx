@@ -4,10 +4,20 @@ import './modal.css';
 interface ModalProps {
   labelledBy: string;
   onClose: () => void;
+  /**
+   * When provided, the close button and Escape call this instead of closing
+   * right away, so the owner can ask for confirmation first.
+   */
+  onCloseRequest?: () => void;
   children: ReactNode;
 }
 
-export function Modal({ labelledBy, onClose, children }: ModalProps) {
+export function Modal({
+  labelledBy,
+  onClose,
+  onCloseRequest,
+  children,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<Element | null>(null);
   const scrollbarWidthRef = useRef<number | null>(null);
@@ -37,13 +47,19 @@ export function Modal({ labelledBy, onClose, children }: ModalProps) {
       aria-modal="true"
       aria-labelledby={labelledBy}
       onClose={onClose}
+      onCancel={(event) => {
+        if (onCloseRequest) {
+          event.preventDefault();
+          onCloseRequest();
+        }
+      }}
     >
       <div className="modal__content">
         <button
           type="button"
           className="modal__close"
           aria-label="Close"
-          onClick={onClose}
+          onClick={onCloseRequest ?? onClose}
         >
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
             <path

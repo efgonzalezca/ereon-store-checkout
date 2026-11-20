@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useAppDispatch } from '@/app/hooks';
+import { checkoutStarted } from '@/features/checkout/state/checkout-slice';
 import { formatCents } from '@/shared/format/currency';
 import { Modal } from '@/shared/ui/modal';
-import { Product } from './product.types';
+import { Product } from '../state/product.types';
+import { selectionCleared } from '../state/products-slice';
 import { QuantitySelect } from './quantity-select';
 
 interface ProductDetailModalProps {
@@ -13,6 +16,7 @@ export function ProductDetailModal({
   product,
   onClose,
 }: ProductDetailModalProps) {
+  const dispatch = useAppDispatch();
   const isOutOfStock = product.stock === 0;
   const [quantity, setQuantity] = useState(isOutOfStock ? 0 : 1);
 
@@ -55,6 +59,10 @@ export function ProductDetailModal({
             type="button"
             className="button button--primary product-detail__pay"
             disabled={isOutOfStock}
+            onClick={() => {
+              dispatch(checkoutStarted({ productId: product.id, quantity }));
+              dispatch(selectionCleared());
+            }}
           >
             Pay with credit card
           </button>
