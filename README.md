@@ -59,6 +59,7 @@ frontend/src/
 ├── app/               # store and typed hooks
 ├── config/            # environment parsing (VITE_API_URL)
 ├── features/products/ # slice, catalog, product card and detail modal
+├── features/checkout/ # pure card and shipping validators
 ├── shared/            # axios client, currency formatting, modal
 └── test/              # Jest setup and render helpers
 ```
@@ -68,6 +69,7 @@ How the pieces fit together:
 - **Catalog and product detail.** The catalog is a responsive grid of product cards. Choosing one opens its detail in a modal, so the user keeps the context of the catalog behind it. The modal is a native `<dialog>`, which provides focus trapping and `Esc` handling out of the box, and it is closed with its close button; a stray tap outside it does not discard the selection. Quantity is picked from a short list that goes from 1 up to the available stock, so no input validation is needed, and the pay button is disabled when a product is out of stock.
 - **Data access.** The axios client is injected into the store as the thunk extra argument. Only `main.tsx` reads the environment, which lets tests run against a fake client without mocking modules.
 - **Layout.** Designed mobile first for a 375×667 viewport using Flexbox and Grid, without hiding overflow. From 768 px the modal places the image beside the product details. Colors and spacing are CSS variables in `index.css`.
+- **Validators.** Card and shipping validation lives in pure functions that return `null` when the value is valid or an error code otherwise, so the UI decides the message. Card numbers must pass the Luhn check and be Visa or Mastercard; expiry is `MM/YY` and must not be in the past; installments go from 1 to 36.
 - **Prices and images.** The API returns prices in cents and the UI formats them as Colombian pesos. Product images are square 640×640 `.webp` files (under 25 kB each) in `frontend/public/images/products/`, served by the same origin as the app; the database only stores their relative path.
 
 ---
