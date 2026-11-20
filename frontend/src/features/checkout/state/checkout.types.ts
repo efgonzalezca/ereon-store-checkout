@@ -37,6 +37,7 @@ export interface CheckoutState {
   traceId: string | null;
   reference: string | null;
   transactionId: string | null;
+  paymentAttempted: boolean;
   customer: CustomerForm;
   shipping: ShippingForm;
   installments: number;

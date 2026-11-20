@@ -20,13 +20,6 @@ interface PaymentBackdropProps {
   onLeave: () => void;
 }
 
-const CLOSED_RESULTS = ['APPROVED', 'PENDING'];
-
-const RESULT_MESSAGES: Record<string, string> = {
-  APPROVED: 'Payment approved',
-  PENDING: 'Payment pending confirmation',
-};
-
 export function PaymentBackdrop({
   product,
   checkout,
@@ -43,12 +36,6 @@ export function PaymentBackdrop({
   const { shipping, installments, quantity } = checkout;
   const amounts = quote.amounts;
   const isSubmitting = submission.status === 'submitting';
-  const result =
-    submission.status === 'done' &&
-    submission.result &&
-    CLOSED_RESULTS.includes(submission.result.status)
-      ? submission.result
-      : null;
   const isQuoteBlocking =
     quote.error === 'not_found' || quote.error === 'out_of_stock';
 
@@ -149,45 +136,36 @@ export function PaymentBackdrop({
           </div>
         </div>
 
-        {!canPay && !result && (
+        {!canPay && (
           <PaymentAlert
             message="Re-enter your card to pay."
             action={{ label: 'Enter card', onClick: () => onEdit(3) }}
           />
         )}
 
-        {result ? (
-          <p
-            role="status"
-            className={`backdrop__result backdrop__result--${result.status.toLowerCase()}`}
+        <div className="checkout__actions">
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={isSubmitting}
+            onClick={onBack}
           >
-            {RESULT_MESSAGES[result.status]}
-          </p>
-        ) : (
-          <div className="checkout__actions">
-            <button
-              type="button"
-              className="button button--secondary"
-              disabled={isSubmitting}
-              onClick={onBack}
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              className="button button--primary"
-              disabled={!canPay || !amounts || isSubmitting}
-              onClick={onPay}
-            >
-              {isSubmitting && <span className="spinner" aria-hidden="true" />}
-              {isSubmitting
-                ? 'Processing...'
-                : amounts
-                  ? `Pay ${formatCents(amounts.totalAmountCents)}`
-                  : 'Pay'}
-            </button>
-          </div>
-        )}
+            Back
+          </button>
+          <button
+            type="button"
+            className="button button--primary"
+            disabled={!canPay || !amounts || isSubmitting}
+            onClick={onPay}
+          >
+            {isSubmitting && <span className="spinner" aria-hidden="true" />}
+            {isSubmitting
+              ? 'Processing...'
+              : amounts
+                ? `Pay ${formatCents(amounts.totalAmountCents)}`
+                : 'Pay'}
+          </button>
+        </div>
       </section>
     </div>
   );

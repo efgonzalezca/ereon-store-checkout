@@ -18,6 +18,7 @@ export const initialCheckoutState: CheckoutState = {
   traceId: null,
   reference: null,
   transactionId: null,
+  paymentAttempted: false,
   customer: {
     documentType: 'CC',
     documentNumber: '',
@@ -97,9 +98,17 @@ const checkoutSlice = createSlice({
     transactionCreated: (state, action: PayloadAction<string>) => {
       state.transactionId = action.payload;
     },
+    paymentStarted: (state) => {
+      state.paymentAttempted = true;
+    },
+    paymentAborted: (state, action: PayloadAction<{ toCard: boolean }>) => {
+      state.paymentAttempted = false;
+      if (action.payload.toCard) state.formSection = 3;
+    },
     attemptClosed: (state, action: PayloadAction<{ reference: string }>) => {
       state.reference = action.payload.reference;
       state.transactionId = null;
+      state.paymentAttempted = false;
       state.formSection = 3;
     },
     checkoutCancelled: () => initialCheckoutState,
@@ -114,6 +123,8 @@ export const {
   sectionChanged,
   detailsSubmitted,
   transactionCreated,
+  paymentStarted,
+  paymentAborted,
   attemptClosed,
   checkoutCancelled,
 } = checkoutSlice.actions;

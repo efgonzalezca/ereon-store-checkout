@@ -7,7 +7,8 @@ import {
   transactionCreated,
 } from './checkout-slice';
 import { classifyError } from './payment-errors';
-import { fetchQuote, submitPayment } from './payment-slice';
+import { checkStatus, fetchQuote, submitPayment } from './payment-slice';
+import { attemptClosed } from './checkout-slice';
 import { SubmitPaymentArgs } from './payment.types';
 
 const httpError = (status: number, data: unknown = {}) =>
@@ -124,6 +125,98 @@ describe('payment slice', () => {
     expect(store.getState().payment.submission).toMatchObject({
       status: 'failed',
       error: 'gateway',
+    });
+  });
+
+  it('keeps the payment attempt open when the result cannot be confirmed', async () => {
+    const post = jest
+      .fn()
+      .mockResolvedValueOnce(result('PENDING'))
+      .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'));
+    const store = build(post);
+    store.dispatch(sectionChanged(4));
+
+    await store.dispatch(submitPayment(args));
+
+    expect(store.getState().checkout).toMatchObject({
+      formSection: 4,
+      paymentAttempted: true,
+    });
+    expect(store.getState().payment.submission).toMatchObject({
+      status: 'failed',
+      error: 'network',
+    });
+  });
+
+  it('leaves the payment attempt without going back to the card when the order cannot be paid', async () => {
+    const post = jest
+      .fn()
+      .mockResolvedValueOnce(result('PENDING'))
+      .mockRejectedValueOnce(httpError(409, { code: 'OUT_OF_STOCK' }));
+    const store = build(post);
+    store.dispatch(sectionChanged(4));
+
+    await store.dispatch(submitPayment(args));
+
+    expect(store.getState().checkout).toMatchObject({
+      formSection: 4,
+      paymentAttempted: false,
+    });
+  });
+
+  it('keeps the attempt and the reference after a declined payment until the user chooses', async () => {
+    const post = jest.fn().mockResolvedValue(result('DECLINED'));
+    const store = build(post);
+    store.dispatch(transactionCreated('tx-1'));
+    const before = store.getState().checkout.reference;
+
+    await store.dispatch(submitPayment(args));
+
+    expect(store.getState().checkout).toMatchObject({
+      reference: before,
+      transactionId: 'tx-1',
+      paymentAttempted: true,
+    });
+
+    store.dispatch(attemptClosed({ reference: 'ref-2' }));
+
+    expect(store.getState().checkout).toMatchObject({
+      reference: 'ref-2',
+      transactionId: null,
+      paymentAttempted: false,
+    });
+    expect(store.getState().payment.submission.status).toBe('idle');
+  });
+
+  it('checks the transaction status with the trace id and stores the result', async () => {
+    const get = jest.fn().mockResolvedValue(result('APPROVED'));
+    const store = build(jest.fn(), get);
+    store.dispatch(transactionCreated('tx-1'));
+
+    await store.dispatch(checkStatus());
+
+    expect(get).toHaveBeenCalledWith('/api/transactions/tx-1', {
+      headers: { 'X-Trace-Id': store.getState().checkout.traceId },
+    });
+    expect(store.getState().payment.submission).toMatchObject({
+      status: 'done',
+      result: { status: 'APPROVED' },
+    });
+  });
+
+  it('reports a failed status check and does not check without a transaction', async () => {
+    const get = jest.fn().mockRejectedValue(new AxiosError('x', 'ERR_NETWORK'));
+    const store = build(jest.fn(), get);
+
+    await store.dispatch(checkStatus());
+    expect(get).not.toHaveBeenCalled();
+
+    store.dispatch(transactionCreated('tx-1'));
+    await store.dispatch(checkStatus());
+
+    expect(store.getState().payment.submission).toMatchObject({
+      status: 'failed',
+      error: 'network',
     });
   });
 

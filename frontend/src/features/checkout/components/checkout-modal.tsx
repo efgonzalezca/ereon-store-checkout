@@ -6,20 +6,24 @@ import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import { fetchProducts } from '@/features/products/state/products-slice';
 import { Modal } from '@/shared/ui/modal';
 import { CardSection } from './steps/card-section';
+import { FinalStatusView } from './final-status-view';
 import { PaymentAlert } from './payment-alert';
 import { PaymentBackdrop } from './payment-backdrop';
 import {
+  checkStatus,
   fetchQuote,
   selectQuote,
   selectSubmission,
   submitPayment,
 } from '../state/payment-slice';
-import { submissionMessage } from '../state/payment-errors';
+import { outcomeOf, submissionMessage } from '../state/payment-errors';
 import { useCardSession } from '../state/card-session';
 import { FormApi } from '../form/checkout-form';
 import {
+  attemptClosed,
   checkoutCancelled,
   customerChanged,
+  paymentAborted,
   detailsSubmitted,
   installmentsChanged,
   sectionChanged,
@@ -166,6 +170,29 @@ export function CheckoutModal({ product }: { product: Product }) {
     void dispatch(fetchProducts());
   };
 
+  const leaveToCatalog = () => {
+    dispatch(checkoutCancelled());
+    void dispatch(fetchProducts());
+  };
+
+  const showResult =
+    checkout.paymentAttempted && submission.status !== 'submitting';
+  const outcome = outcomeOf(submission);
+
+  useEffect(() => {
+    if (checkout.paymentAttempted && submission.status === 'idle') {
+      void dispatch(checkStatus());
+    }
+  }, [dispatch, checkout.paymentAttempted, submission.status]);
+
+  const handleTryAnotherCard = () => {
+    if (submission.result) {
+      dispatch(attemptClosed({ reference: crypto.randomUUID() }));
+    } else {
+      dispatch(paymentAborted({ toCard: true }));
+    }
+  };
+
   const handlePay = async () => {
     if (!tokens) return;
     const [expMonth, expYear] = card.expiry.split('/');
@@ -238,6 +265,28 @@ export function CheckoutModal({ product }: { product: Product }) {
 
     goTo(isLast ? 4 : ((section + 1) as CheckoutSection));
   };
+
+  if (showResult) {
+    return (
+      <Modal
+        labelledBy="checkout-title"
+        onClose={leaveToCatalog}
+        onCloseRequest={leaveToCatalog}
+      >
+        <FinalStatusView
+          outcome={outcome}
+          reference={checkout.reference}
+          traceId={checkout.traceId}
+          isChecking={
+            submission.status === 'checking' || submission.status === 'idle'
+          }
+          onBackToProducts={leaveToCatalog}
+          onTryAnotherCard={handleTryAnotherCard}
+          onCheckStatus={() => void dispatch(checkStatus())}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

@@ -48,6 +48,7 @@ export function parseCheckoutState(raw: unknown): CheckoutState {
     traceId,
     reference,
     transactionId: nullableText(raw.transactionId),
+    paymentAttempted: formSection === 4 && raw.paymentAttempted === true,
     customer: {
       documentType: documentType ?? 'CC',
       documentNumber: text(customer.documentNumber),

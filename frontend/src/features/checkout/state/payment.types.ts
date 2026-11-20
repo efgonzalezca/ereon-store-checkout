@@ -49,10 +49,12 @@ export interface QuoteState {
 }
 
 export interface SubmissionState {
-  status: 'idle' | 'submitting' | 'done' | 'failed';
+  status: 'idle' | 'submitting' | 'checking' | 'done' | 'failed';
   result: TransactionResult | null;
   error: ApiErrorKind | null;
 }
+
+export type PaymentOutcome = TransactionStatus | 'REJECTED' | 'UNCONFIRMED';
 
 export interface PaymentState {
   quote: QuoteState;

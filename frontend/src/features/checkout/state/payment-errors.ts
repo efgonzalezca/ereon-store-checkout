@@ -1,16 +1,20 @@
 import axios from 'axios';
 import {
   ApiErrorKind,
+  PaymentOutcome,
   SubmissionState,
   TransactionStatus,
 } from './payment.types';
 
 export const RETRYABLE_ERRORS: readonly ApiErrorKind[] = [
-  'card_rejected',
-  'network',
   'gateway',
   'rate_limited',
   'unexpected',
+];
+
+export const RESULT_ERRORS: readonly ApiErrorKind[] = [
+  'card_rejected',
+  'network',
 ];
 
 export const FAILED_STATUSES: readonly TransactionStatus[] = [
@@ -35,13 +39,6 @@ const ERROR_MESSAGES: Record<ApiErrorKind, string> = {
   unexpected: 'Something went wrong. Enter your card again and retry.',
 };
 
-const STATUS_MESSAGES: Partial<Record<TransactionStatus, string>> = {
-  DECLINED:
-    'Your bank declined the payment and you were not charged. Enter your card again or use another card.',
-  ERROR: 'The payment could not be completed. Enter your card again to retry.',
-  VOIDED: 'The payment was voided. Enter your card again to retry.',
-};
-
 export const errorMessage = (kind: ApiErrorKind): string =>
   ERROR_MESSAGES[kind];
 
@@ -61,11 +58,17 @@ export function classifyError(error: unknown): ApiErrorKind {
 }
 
 export function submissionMessage(submission: SubmissionState): string | null {
-  if (submission.status === 'failed' && submission.error) {
+  if (
+    submission.status === 'failed' &&
+    submission.error &&
+    !RESULT_ERRORS.includes(submission.error)
+  ) {
     return ERROR_MESSAGES[submission.error];
   }
-  if (submission.status === 'done' && submission.result) {
-    return STATUS_MESSAGES[submission.result.status] ?? null;
-  }
   return null;
+}
+
+export function outcomeOf(submission: SubmissionState): PaymentOutcome {
+  if (submission.result) return submission.result.status;
+  return submission.error === 'card_rejected' ? 'REJECTED' : 'UNCONFIRMED';
 }

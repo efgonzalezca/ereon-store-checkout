@@ -4,13 +4,14 @@ import {
   attemptClosed,
   checkoutCancelled,
   checkoutStarted,
-  sectionChanged,
+  paymentAborted,
+  paymentStarted,
   transactionCreated,
 } from './checkout-slice';
 import { CheckoutState } from './checkout.types';
 import {
   classifyError,
-  FAILED_STATUSES,
+  RESULT_ERRORS,
   RETRYABLE_ERRORS,
 } from './payment-errors';
 import {
@@ -85,6 +86,7 @@ export const submitPayment = createAsyncThunk<
         dispatch(transactionCreated(transactionId));
       }
 
+      dispatch(paymentStarted());
       const { data } = await extra.api.post<TransactionResult>(
         `/api/transactions/${transactionId}/pay`,
         {
@@ -96,19 +98,48 @@ export const submitPayment = createAsyncThunk<
         { headers, timeout: PAY_TIMEOUT_MS },
       );
 
-      if (FAILED_STATUSES.includes(data.status)) {
-        dispatch(attemptClosed({ reference: crypto.randomUUID() }));
-      }
       return data;
     } catch (error) {
       const kind = classifyError(error);
-      if (RETRYABLE_ERRORS.includes(kind)) dispatch(sectionChanged(3));
+      if (!RESULT_ERRORS.includes(kind)) {
+        dispatch(paymentAborted({ toCard: RETRYABLE_ERRORS.includes(kind) }));
+      }
       return rejectWithValue(kind);
     }
   },
   {
     condition: (_arg, { getState }) =>
       getState().payment.submission.status !== 'submitting',
+  },
+);
+
+export const checkStatus = createAsyncThunk<
+  TransactionResult,
+  void,
+  ThunkConfig
+>(
+  'payment/checkStatus',
+  async (_arg, { extra, getState, rejectWithValue }) => {
+    const { transactionId, traceId } = getState().checkout;
+    try {
+      const { data } = await extra.api.get<TransactionResult>(
+        `/api/transactions/${transactionId}`,
+        { headers: { 'X-Trace-Id': traceId } },
+      );
+      return data;
+    } catch (error) {
+      return rejectWithValue(classifyError(error));
+    }
+  },
+  {
+    condition: (_arg, { getState }) => {
+      const { checkout, payment } = getState();
+      return (
+        checkout.transactionId !== null &&
+        payment.submission.status !== 'submitting' &&
+        payment.submission.status !== 'checking'
+      );
+    },
   },
 );
 
@@ -120,6 +151,12 @@ const paymentSlice = createSlice({
     builder
       .addCase(checkoutStarted, () => initialPaymentState)
       .addCase(checkoutCancelled, () => initialPaymentState)
+      .addCase(attemptClosed, (state) => {
+        state.submission = initialPaymentState.submission;
+      })
+      .addCase(paymentAborted, (state) => {
+        state.submission = initialPaymentState.submission;
+      })
       .addCase(fetchQuote.pending, (state) => {
         state.quote = { status: 'loading', amounts: null, error: null };
       })
@@ -154,6 +191,21 @@ const paymentSlice = createSlice({
           result: null,
           error: action.payload ?? 'unexpected',
         };
+      })
+      .addCase(checkStatus.pending, (state) => {
+        state.submission.status = 'checking';
+      })
+      .addCase(checkStatus.fulfilled, (state, action) => {
+        state.submission = {
+          status: 'done',
+          result: action.payload,
+          error: null,
+        };
+      })
+      .addCase(checkStatus.rejected, (state, action) => {
+        if (action.meta.condition) return;
+        state.submission.status = 'failed';
+        state.submission.error ??= action.payload ?? 'unexpected';
       });
   },
 });

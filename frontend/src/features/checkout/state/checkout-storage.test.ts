@@ -68,6 +68,30 @@ describe('checkout storage', () => {
     expect(state.formSection).toBe(3);
   });
 
+  it('restores a payment attempt only on the summary with a stored card', () => {
+    const stored = {
+      step: 2,
+      productId: 'p-1',
+      traceId: 't-1',
+      reference: 'r-1',
+      paymentAttempted: true,
+    };
+
+    expect(
+      parseCheckoutState({
+        ...stored,
+        formSection: 4,
+        cardLast4: '4242',
+      }).paymentAttempted,
+    ).toBe(true);
+    expect(
+      parseCheckoutState({ ...stored, formSection: 4 }).paymentAttempted,
+    ).toBe(false);
+    expect(
+      parseCheckoutState({ ...stored, formSection: 3 }).paymentAttempted,
+    ).toBe(false);
+  });
+
   it('sanitizes tampered values', () => {
     const state = parseCheckoutState({
       step: 2,

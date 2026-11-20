@@ -35,9 +35,21 @@ const httpError = (status: number, data: unknown = {}) =>
     data,
   } as AxiosResponse);
 
-function createApi(options: { tokens?: 'ok' | 'fail'; quote?: unknown } = {}) {
+function createApi(
+  options: {
+    tokens?: 'ok' | 'fail';
+    quote?: unknown;
+    status?: string | Error;
+  } = {},
+) {
   return jest.fn((url: string) => {
     if (url === '/api/products') return Promise.resolve({ data: products });
+    if (url.startsWith('/api/transactions/')) {
+      const { status } = options;
+      return status instanceof Error
+        ? Promise.reject(status)
+        : Promise.resolve({ data: transaction(status ?? 'PENDING') });
+    }
     if (url === '/api/quote') {
       return options.quote instanceof Error
         ? Promise.reject(options.quote)
@@ -477,9 +489,9 @@ describe('payment from the summary', () => {
 
     await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
 
-    expect(await within(dialog).findByRole('status')).toHaveTextContent(
-      'Payment approved',
-    );
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment approved' }),
+    ).toBeInTheDocument();
     const { traceId, reference } = store.getState().checkout;
     const headers = { 'X-Trace-Id': traceId };
     expect(post).toHaveBeenNthCalledWith(
@@ -527,11 +539,8 @@ describe('payment from the summary', () => {
     const persisted = storage.data[CHECKOUT_STORAGE_KEY];
     expect(persisted).not.toContain('4242424242424242');
     expect(persisted).not.toContain(tokens.acceptanceToken);
-
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Edit card info' }),
-    );
-    expect(within(dialog).getByLabelText('Card number')).toHaveValue('');
+    expect(within(dialog).getByText(reference as string)).toBeInTheDocument();
+    expect(within(dialog).getByText(traceId as string)).toBeInTheDocument();
   });
 
   it('disables "Pay" while processing so it cannot be sent twice', async () => {
@@ -556,35 +565,50 @@ describe('payment from the summary', () => {
     expect(post).toHaveBeenCalledTimes(2);
 
     finish({ data: transaction('APPROVED') });
-    expect(await within(dialog).findByRole('status')).toBeInTheDocument();
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment approved' }),
+    ).toBeInTheDocument();
   });
 
-  it.each(['DECLINED', 'ERROR', 'VOIDED'])(
-    'goes back to the card step with a new reference after a %s payment',
-    async (outcome) => {
+  it.each([
+    ['DECLINED', 'Payment declined'],
+    ['ERROR', 'Payment failed'],
+    ['VOIDED', 'Payment voided'],
+  ])(
+    'shows the %s result and returns to the card step with a new reference',
+    async (outcome, title) => {
       const post = createPost(outcome);
       const { user, dialog, store, get } = await openSummary({ post });
       const before = store.getState().checkout.reference;
 
       await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
 
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-        'Enter your card again',
-      );
-      const state = store.getState().checkout;
-      expect(state.formSection).toBe(3);
-      expect(state.transactionId).toBeNull();
-      expect(state.reference).not.toBe(before);
-      expect(within(dialog).getByLabelText('Card number')).toHaveValue('');
       expect(
-        within(dialog).queryByText('This field is required'),
-      ).not.toBeInTheDocument();
+        await within(dialog).findByRole('heading', { name: title }),
+      ).toBeInTheDocument();
+      expect(within(dialog).getByText(before as string)).toBeInTheDocument();
       expect(
         within(dialog).getByText(
           'For your security, your card details were cleared.',
         ),
       ).toBeInTheDocument();
-      expect(within(dialog).getByLabelText('Card number')).toHaveFocus();
+      expect(
+        within(dialog).queryByRole('button', { name: 'Check status' }),
+      ).not.toBeInTheDocument();
+
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Try another card' }),
+      );
+
+      const state = store.getState().checkout;
+      expect(state.formSection).toBe(3);
+      expect(state.transactionId).toBeNull();
+      expect(state.paymentAttempted).toBe(false);
+      expect(state.reference).not.toBe(before);
+      expect(within(dialog).getByLabelText('Card number')).toHaveValue('');
+      expect(
+        within(dialog).queryByText('This field is required'),
+      ).not.toBeInTheDocument();
       await waitFor(() =>
         expect(
           get.mock.calls.filter(
@@ -595,24 +619,145 @@ describe('payment from the summary', () => {
     },
   );
 
+  it('keeps the same transaction when the gateway rejects the card and the user tries another one', async () => {
+    const post = createPost(httpError(422, { code: 'CARD_REJECTED' }));
+    const { user, dialog, store } = await openSummary({ post });
+    const before = store.getState().checkout.reference;
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Card not accepted' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Try another card' }),
+    );
+
+    expect(store.getState().checkout).toMatchObject({
+      formSection: 3,
+      transactionId: 'tx-1',
+      reference: before,
+      paymentAttempted: false,
+    });
+    expect(within(dialog).getByLabelText('Card number')).toHaveValue('');
+  });
+
+  it('goes back to the catalog after an approved payment, clearing the checkout and refreshing the stock', async () => {
+    const storage = memoryStorage();
+    const { user, dialog, store, get } = await openSummary({
+      post: createPost('APPROVED'),
+      storage,
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'Back to products' }),
+    );
+
+    expect(store.getState().checkout.step).toBe(1);
+    expect(storage.data[CHECKOUT_STORAGE_KEY]).toBeUndefined();
+    await waitFor(() =>
+      expect(
+        get.mock.calls.filter(([url]) => url === '/api/products'),
+      ).toHaveLength(2),
+    );
+  });
+
+  it('closes the result view without asking for confirmation', async () => {
+    const { user, dialog, store } = await openSummary({
+      post: createPost('DECLINED'),
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await within(dialog).findByRole('heading', { name: 'Payment declined' });
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+
+    expect(screen.queryByText('Discard checkout?')).not.toBeInTheDocument();
+    expect(store.getState().checkout.step).toBe(1);
+  });
+
+  it('shows a pending payment and updates it when the status is checked again', async () => {
+    const api = createApi({ status: 'APPROVED' });
+    const { user, dialog } = await openSummary({
+      post: createPost('PENDING'),
+      api,
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment pending' }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'Check again in a moment',
+    );
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Check status' }),
+    );
+
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment approved' }),
+    ).toBeInTheDocument();
+    expect(api).toHaveBeenCalledWith('/api/transactions/tx-1', {
+      headers: expect.objectContaining({ 'X-Trace-Id': expect.any(String) }),
+    });
+  });
+
+  it('does not offer to retry when the payment could not be confirmed and lets the user check it', async () => {
+    const api = createApi({ status: 'DECLINED' });
+    const post = createPost(new AxiosError('Network Error', 'ERR_NETWORK'));
+    const { user, dialog } = await openSummary({ post, api });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+
+    expect(
+      await within(dialog).findByRole('heading', {
+        name: "We couldn't confirm your payment",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('button', { name: 'Try another card' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Check status' }),
+    );
+
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment declined' }),
+    ).toBeInTheDocument();
+  });
+
+  it('stays unconfirmed when the status check cannot reach the server either', async () => {
+    const api = createApi({
+      status: new AxiosError('Network Error', 'ERR_NETWORK'),
+    });
+    const post = createPost(new AxiosError('Network Error', 'ERR_NETWORK'));
+    const { user, dialog } = await openSummary({ post, api });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'Check status' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: 'Check status' }),
+      ).toBeEnabled(),
+    );
+    expect(
+      within(dialog).getByRole('heading', {
+        name: "We couldn't confirm your payment",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it.each([
-    [
-      'a network failure',
-      new AxiosError('Network Error', 'ERR_NETWORK'),
-      3,
-      'could not confirm',
-    ],
     [
       'a gateway failure',
       httpError(502, { code: 'GATEWAY_ERROR' }),
       3,
       'unavailable',
-    ],
-    [
-      'a card the gateway rejected',
-      httpError(422, { code: 'CARD_REJECTED' }),
-      3,
-      'could not accept this card',
     ],
     ['too many attempts', httpError(429), 3, 'Too many attempts'],
     [
@@ -731,4 +876,45 @@ describe('payment from the summary', () => {
     );
     expect(within(dialog).getByLabelText('Card number')).toBeInTheDocument();
   });
+
+  describe.each([
+    ['APPROVED', 'Payment approved'],
+    ['DECLINED', 'Payment declined'],
+    ['SOMETHING_NEW', "We couldn't confirm your payment"],
+  ])(
+    'after a reload during the payment (gateway status %s)',
+    (status, title) => {
+      it('asks the backend for the transaction and shows its result', async () => {
+        const storage = memoryStorage({
+          [CHECKOUT_STORAGE_KEY]: JSON.stringify({
+            step: 2,
+            formSection: 4,
+            productId: 'p-1',
+            quantity: 1,
+            traceId: 'trace-1',
+            reference: 'ref-1',
+            transactionId: 'tx-1',
+            paymentAttempted: true,
+            cardLast4: '4242',
+            cardBrand: 'VISA',
+          }),
+        });
+        const api = createApi({ status });
+        renderWithStore(<App />, api, storage, createPost());
+
+        const dialog = await screen.findByRole('dialog', {
+          name: new RegExp(title, 'i'),
+        });
+
+        expect(
+          within(dialog).getByRole('heading', { name: title }),
+        ).toBeInTheDocument();
+        expect(api).toHaveBeenCalledWith('/api/transactions/tx-1', {
+          headers: { 'X-Trace-Id': 'trace-1' },
+        });
+        expect(within(dialog).getByText('ref-1')).toBeInTheDocument();
+        expect(within(dialog).getByText('trace-1')).toBeInTheDocument();
+      });
+    },
+  );
 });
