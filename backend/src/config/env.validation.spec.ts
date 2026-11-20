@@ -15,6 +15,9 @@ describe('validateEnv', () => {
     DB_SSL: 'true',
     PAYMENT_API_URL: 'https://gateway.test',
     PAYMENT_PUBLIC_KEY: 'pub_test_mock_key',
+    PAYMENT_PRIVATE_KEY: 'prv_test_mock_key',
+    PAYMENT_INTEGRITY_KEY: 'test_integrity_mock_secret',
+    PAYMENT_CURRENCY: 'COP',
     TRUST_PROXY_HOPS: '1',
     BASE_FEE_CENTS: '300000',
     DELIVERY_FEE_CENTS: '1200000',
@@ -34,8 +37,13 @@ describe('validateEnv', () => {
 
   it('requires the payment gateway settings', () => {
     const { PAYMENT_PUBLIC_KEY: _omitted, ...rest } = validEnv;
+    const { PAYMENT_PRIVATE_KEY: _private, ...withoutPrivate } = validEnv;
 
     expect(() => validateEnv(rest)).toThrow(/PAYMENT_PUBLIC_KEY/);
+    expect(() => validateEnv(withoutPrivate)).toThrow(/PAYMENT_PRIVATE_KEY/);
+    expect(() => validateEnv({ ...validEnv, PAYMENT_CURRENCY: 'cop' })).toThrow(
+      /PAYMENT_CURRENCY/,
+    );
     expect(() =>
       validateEnv({ ...validEnv, PAYMENT_API_URL: 'ftp://gateway.test' }),
     ).toThrow(/PAYMENT_API_URL/);

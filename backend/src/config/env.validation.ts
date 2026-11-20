@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   validateSync,
@@ -108,6 +109,19 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   PAYMENT_PUBLIC_KEY!: string;
+
+  @Transform(({ value }: { value: unknown }) => trim(value))
+  @IsString()
+  @IsNotEmpty()
+  PAYMENT_PRIVATE_KEY!: string;
+
+  @Transform(({ value }: { value: unknown }) => trim(value))
+  @IsString()
+  @IsNotEmpty()
+  PAYMENT_INTEGRITY_KEY!: string;
+
+  @Matches(/^[A-Z]{3}$/)
+  PAYMENT_CURRENCY!: string;
 }
 
 export function validateEnv(

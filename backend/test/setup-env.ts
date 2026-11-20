@@ -16,3 +16,6 @@ process.env.PAYMENT_PUBLIC_KEY = 'pub_test_mock_key';
 process.env.TRUST_PROXY_HOPS = '0';
 process.env.BASE_FEE_CENTS = '300000';
 process.env.DELIVERY_FEE_CENTS = '1200000';
+process.env.PAYMENT_PRIVATE_KEY = 'prv_test_mock_key';
+process.env.PAYMENT_INTEGRITY_KEY = 'test_integrity_mock_secret';
+process.env.PAYMENT_CURRENCY = 'COP';

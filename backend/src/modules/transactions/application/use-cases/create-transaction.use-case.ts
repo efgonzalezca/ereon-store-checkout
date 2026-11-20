@@ -58,15 +58,10 @@ export class CreateTransactionUseCase {
     });
     if (created.isOk) return created;
 
-    // Lost a race against the same reference: treat it as a replay.
     const winner = await this.transactions.findByReference(input.reference);
     return winner ? this.replay(winner, input) : created;
   }
 
-  /**
-   * A retry of the same request (for example after a lost response) returns
-   * the transaction that already exists; any other use of the reference fails.
-   */
   private async replay(
     existing: Transaction,
     input: CreateTransactionInput,

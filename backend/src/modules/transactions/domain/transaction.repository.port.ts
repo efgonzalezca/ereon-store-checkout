@@ -4,7 +4,6 @@ import { NewTransaction, Transaction } from './transaction';
 
 export interface ITransactionRepository {
   findByReference(reference: string): Promise<Transaction | null>;
-  /** Persists a `PENDING` transaction; fails if the reference is already taken. */
   create(
     data: NewTransaction,
   ): Promise<Result<Transaction, DuplicateReferenceError>>;

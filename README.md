@@ -30,7 +30,7 @@ backend/src/
 ├── modules/
 │   ├── products/  # domain/, application/use-cases/, infrastructure/
 │   ├── customers/ # same layers; upserts customers by document type and number
-│   ├── payments/  # payment gateway port and adapter; acceptance tokens
+│   ├── payments/  # payment gateway port and adapter; acceptance tokens, card tokenization and charges
 │   └── transactions/ # creates PENDING transactions and quotes the amounts
 │                  # Pending: deliveries
 └── shared/
@@ -185,6 +185,9 @@ curl http://localhost:3000/api/health  # backend
 | `DELIVERY_FEE_CENTS` | Delivery fee added to every purchase, in cents |
 | `PAYMENT_API_URL` | Base URL of the payment gateway (`http` or `https`, no trailing path) |
 | `PAYMENT_PUBLIC_KEY` | Merchant public key, used only server side and never logged or returned |
+| `PAYMENT_PRIVATE_KEY` | Merchant private key used to create and poll charges; server side only |
+| `PAYMENT_INTEGRITY_KEY` | Secret used to sign every charge; server side only |
+| `PAYMENT_CURRENCY` | ISO 4217 currency code of the charges (for example `COP`) |
 
 ### Environment variables (`frontend/.env.example`)
 

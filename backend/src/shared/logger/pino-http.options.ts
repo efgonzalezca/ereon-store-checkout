@@ -18,6 +18,15 @@ const SENSITIVE_KEYS = [
   'integrityKey',
   'acceptance_token',
   'accept_personal_auth',
+  'acceptanceToken',
+  'personalAuthToken',
+  'cardHolder',
+  'card_holder',
+  'exp_month',
+  'exp_year',
+  'expiry',
+  'token',
+  'signature',
 ];
 
 export const REDACT_PATHS = SENSITIVE_KEYS.flatMap((key) => [

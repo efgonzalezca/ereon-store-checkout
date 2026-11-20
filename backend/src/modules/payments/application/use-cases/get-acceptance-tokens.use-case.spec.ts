@@ -13,7 +13,10 @@ const tokens: AcceptanceTokens = {
 describe('GetAcceptanceTokensUseCase', () => {
   it('requests fresh tokens from the gateway on every call', async () => {
     const getAcceptanceTokens = jest.fn().mockResolvedValue(ok(tokens));
-    const useCase = new GetAcceptanceTokensUseCase({ getAcceptanceTokens });
+    const useCase = new GetAcceptanceTokensUseCase({
+      getAcceptanceTokens,
+      charge: jest.fn(),
+    });
 
     await useCase.execute();
     const result = await useCase.execute();
@@ -26,6 +29,7 @@ describe('GetAcceptanceTokensUseCase', () => {
     const failure = err(new GatewayError('down'));
     const useCase = new GetAcceptanceTokensUseCase({
       getAcceptanceTokens: jest.fn().mockResolvedValue(failure),
+      charge: jest.fn(),
     });
 
     expect(await useCase.execute()).toBe(failure);
