@@ -1,5 +1,5 @@
 import { formatCents } from '@/shared/format/currency';
-import { Product } from './product.types';
+import { Product } from '../state/product.types';
 
 interface ProductCardProps {
   product: Product;

@@ -1,4 +1,4 @@
-import { DOCUMENT_TYPES } from '../checkout.constants';
+import { DOCUMENT_TYPES } from '../../state/checkout.constants';
 
 export type RequiredFieldError = 'required';
 export type DocumentTypeError = 'invalid_document_type';

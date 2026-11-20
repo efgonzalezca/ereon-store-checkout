@@ -1,4 +1,7 @@
-import { INSTALLMENTS_MAX, INSTALLMENTS_MIN } from '../checkout.constants';
+import {
+  INSTALLMENTS_MAX,
+  INSTALLMENTS_MIN,
+} from '../../state/checkout.constants';
 
 export type CardBrand = 'VISA' | 'MASTERCARD';
 

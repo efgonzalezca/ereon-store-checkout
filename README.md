@@ -56,12 +56,18 @@ The frontend is a React 19 single-page app built with Vite and TypeScript. State
 
 ```text
 frontend/src/
-├── app/               # store and typed hooks
-├── config/            # environment parsing (VITE_API_URL)
-├── features/products/ # slice, catalog, product card and detail modal
-├── features/checkout/ # pure card and shipping validators
-├── shared/            # axios client, currency formatting, modal
-└── test/              # Jest setup and render helpers
+├── app/                  # store and typed hooks
+├── config/               # environment parsing (VITE_API_URL)
+├── features/
+│   ├── products/         # catalog page
+│   │   ├── components/   # product card, detail modal, quantity select
+│   │   └── state/        # products slice and types
+│   └── checkout/         # checkout flow (entry: checkout-flow.tsx)
+│       ├── components/   # modal, progress indicator, order summary and the four steps
+│       ├── form/         # fields, validation and the card/customer/shipping validators
+│       └── state/        # checkout slice, localStorage storage and the in-memory card session
+├── shared/               # axios client, currency formatting, modal and confirm dialog
+└── test/                 # Jest setup and test helpers
 ```
 
 How the pieces fit together:
@@ -69,6 +75,7 @@ How the pieces fit together:
 - **Catalog and product detail.** The catalog is a responsive grid of product cards. Choosing one opens its detail in a modal, so the user keeps the context of the catalog behind it. The modal is a native `<dialog>`, which provides focus trapping and `Esc` handling out of the box, and it is closed with its close button; a stray tap outside it does not discard the selection. Quantity is picked from a short list that goes from 1 up to the available stock, so no input validation is needed, and the pay button is disabled when a product is out of stock.
 - **Data access.** The axios client is injected into the store as the thunk extra argument. Only `main.tsx` reads the environment, which lets tests run against a fake client without mocking modules.
 - **Layout.** Designed mobile first for a 375×667 viewport using Flexbox and Grid, without hiding overflow. From 768 px the modal places the image beside the product details. Colors and spacing are CSS variables in `index.css`.
+- **Checkout flow.** "Pay with credit card" starts a checkout: the product detail closes and a modal opens with a four-step progress indicator: personal info, shipping info, card info and summary. Steps can be visited in any order; a check mark appears only on the complete ones, and the summary opens once the first three are complete. "Next" validates the current step, and the card step also holds the terms checkbox. A compact order summary stays visible beside (desktop) or above (mobile) the form. Closing the modal after typing asks for confirmation. There are no routes: the state lives in the store, so the flow survives a reload. Only non-sensitive data is saved to `localStorage` (modal step, product, quantity, customer and shipping data, installments, last four digits, brand and trace id). The card number, expiry, CVC, holder and acceptance tokens stay in a React context in memory, so after a reload the user re-enters the card and fresh single-use tokens are requested. Every checkout request carries an `X-Trace-Id` generated when the checkout starts.
 - **Validators.** Card and shipping validation lives in pure functions that return `null` when the value is valid or an error code otherwise, so the UI decides the message. Card numbers must pass the Luhn check and be Visa or Mastercard; expiry is `MM/YY` and must not be in the past; installments go from 1 to 36.
 - **Prices and images.** The API returns prices in cents and the UI formats them as Colombian pesos. Product images are square 640×640 `.webp` files (under 25 kB each) in `frontend/public/images/products/`, served by the same origin as the app; the database only stores their relative path.
 
