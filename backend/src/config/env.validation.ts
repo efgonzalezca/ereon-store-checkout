@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsString,
   IsUrl,
+  Matches,
   Max,
   Min,
   validateSync,
@@ -47,6 +48,16 @@ export class EnvironmentVariables {
   @Min(1)
   THROTTLE_LIMIT!: number;
 
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  THROTTLE_PAY_TTL!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  THROTTLE_PAY_LIMIT!: number;
+
   @Transform(({ value }: { value: unknown }) => trim(value))
   @IsString()
   @IsNotEmpty()
@@ -80,6 +91,21 @@ export class EnvironmentVariables {
   @IsBoolean()
   DB_SSL!: boolean;
 
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  TRUST_PROXY_HOPS!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  BASE_FEE_CENTS!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  DELIVERY_FEE_CENTS!: number;
+
   @Transform(({ value }: { value: unknown }) => trim(value))
   @IsUrl({
     require_protocol: true,
@@ -93,6 +119,19 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   PAYMENT_PUBLIC_KEY!: string;
+
+  @Transform(({ value }: { value: unknown }) => trim(value))
+  @IsString()
+  @IsNotEmpty()
+  PAYMENT_PRIVATE_KEY!: string;
+
+  @Transform(({ value }: { value: unknown }) => trim(value))
+  @IsString()
+  @IsNotEmpty()
+  PAYMENT_INTEGRITY_KEY!: string;
+
+  @Matches(/^[A-Z]{3}$/)
+  PAYMENT_CURRENCY!: string;
 }
 
 export function validateEnv(

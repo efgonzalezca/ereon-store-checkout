@@ -2,12 +2,11 @@ import { CallHandler, ExecutionContext, HttpException } from '@nestjs/common';
 import { lastValueFrom, of } from 'rxjs';
 import { DomainError } from '../rop/domain-error';
 import {
+  DuplicateReferenceError,
   GatewayError,
   InvalidTransactionStateError,
   NotFoundError,
   OutOfStockError,
-  PaymentDeclinedError,
-  VoidedTransactionError,
 } from '../rop/errors';
 import { err, ok } from '../rop/result';
 import { ResultInterceptor } from './result.interceptor';
@@ -38,8 +37,7 @@ describe('ResultInterceptor', () => {
       [new NotFoundError('m'), 404],
       [new OutOfStockError('m'), 409],
       [new InvalidTransactionStateError('m'), 409],
-      [new PaymentDeclinedError('m'), 422],
-      [new VoidedTransactionError('m'), 422],
+      [new DuplicateReferenceError('m'), 422],
       [new GatewayError('m'), 502],
     ];
 

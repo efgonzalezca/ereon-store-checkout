@@ -41,4 +41,32 @@ describe('CustomerTypeOrmRepository', () => {
       ...data,
     });
   });
+
+  it('finds a customer by id and returns null when it does not exist', async () => {
+    const row = {
+      id: '9b2e1c4a-7d3f-4a85-b6e0-1f4c8a2d5e77',
+      documentType: 'CC',
+      documentNumber: '123',
+      fullName: 'Jane Doe',
+      email: 'jane@example.com',
+      phone: '3001112233',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const typeorm = {
+      findOneBy: jest
+        .fn()
+        .mockResolvedValueOnce(row)
+        .mockResolvedValueOnce(null),
+    };
+    const repository = new CustomerTypeOrmRepository(
+      typeorm as unknown as Repository<CustomerOrmEntity>,
+    );
+
+    expect(await repository.findById(row.id)).toMatchObject({
+      id: row.id,
+      email: 'jane@example.com',
+    });
+    expect(await repository.findById('missing')).toBeNull();
+  });
 });

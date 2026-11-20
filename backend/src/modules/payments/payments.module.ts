@@ -12,5 +12,6 @@ import { PaymentsController } from './infrastructure/payments.controller';
     GetAcceptanceTokensUseCase,
     { provide: PAYMENT_GATEWAY, useClass: PaymentGatewayAdapter },
   ],
+  exports: [PAYMENT_GATEWAY],
 })
 export class PaymentsModule {}
