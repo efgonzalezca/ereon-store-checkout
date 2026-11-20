@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { EnvironmentVariables, validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
+import { CustomersModule } from './modules/customers/customers.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { ResultInterceptor } from './shared/interceptors/result.interceptor';
@@ -26,6 +27,7 @@ import { AppLoggerModule } from './shared/logger/logger.module';
     DatabaseModule,
     HealthModule,
     ProductsModule,
+    CustomersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -28,8 +28,9 @@ backend/src/
 ├── database/      # TypeORM connection, data-source, migrations and seeds
 ├── health/        # GET /api/health
 ├── modules/
-│   └── products/  # domain/, application/use-cases/, infrastructure/
-│                  # Pending: customers, transactions, deliveries
+│   ├── products/  # domain/, application/use-cases/, infrastructure/
+│   └── customers/ # same layers; upserts customers by document type and number
+│                  # Pending: transactions, deliveries
 └── shared/
     ├── rop/          # Result<T, E> and typed domain errors
     ├── interceptors/ # ResultInterceptor
