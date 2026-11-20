@@ -13,3 +13,6 @@ process.env.DB_NAME = 'test_db';
 process.env.DB_SSL = 'false';
 process.env.PAYMENT_API_URL = 'https://gateway.test';
 process.env.PAYMENT_PUBLIC_KEY = 'pub_test_mock_key';
+process.env.TRUST_PROXY_HOPS = '0';
+process.env.BASE_FEE_CENTS = '300000';
+process.env.DELIVERY_FEE_CENTS = '1200000';

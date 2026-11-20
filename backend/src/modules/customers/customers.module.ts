@@ -11,5 +11,6 @@ import { CustomerTypeOrmRepository } from './infrastructure/customer.typeorm.rep
     FindOrCreateCustomerUseCase,
     { provide: CUSTOMER_REPOSITORY, useClass: CustomerTypeOrmRepository },
   ],
+  exports: [FindOrCreateCustomerUseCase],
 })
 export class CustomersModule {}

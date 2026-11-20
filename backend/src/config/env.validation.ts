@@ -80,6 +80,21 @@ export class EnvironmentVariables {
   @IsBoolean()
   DB_SSL!: boolean;
 
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  TRUST_PROXY_HOPS!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  BASE_FEE_CENTS!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  DELIVERY_FEE_CENTS!: number;
+
   @Transform(({ value }: { value: unknown }) => trim(value))
   @IsUrl({
     require_protocol: true,

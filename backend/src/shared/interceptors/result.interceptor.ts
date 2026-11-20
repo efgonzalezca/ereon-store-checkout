@@ -10,6 +10,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { DomainError } from '../rop/domain-error';
 import {
+  DuplicateReferenceError,
   GatewayError,
   InvalidTransactionStateError,
   NotFoundError,
@@ -25,6 +26,7 @@ const STATUS_BY_ERROR = new Map<object, HttpStatus>([
   [InvalidTransactionStateError, HttpStatus.CONFLICT],
   [PaymentDeclinedError, HttpStatus.UNPROCESSABLE_ENTITY],
   [VoidedTransactionError, HttpStatus.UNPROCESSABLE_ENTITY],
+  [DuplicateReferenceError, HttpStatus.UNPROCESSABLE_ENTITY],
   [GatewayError, HttpStatus.BAD_GATEWAY],
 ]);
 

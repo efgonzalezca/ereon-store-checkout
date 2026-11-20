@@ -9,7 +9,7 @@ export function configureApp(app: NestExpressApplication): void {
   const config =
     app.get<ConfigService<EnvironmentVariables, true>>(ConfigService);
 
-  app.set('trust proxy', 2);
+  app.set('trust proxy', config.get<number>('TRUST_PROXY_HOPS'));
   app.setGlobalPrefix('api');
 
   app.use(

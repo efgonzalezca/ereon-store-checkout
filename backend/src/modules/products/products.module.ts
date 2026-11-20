@@ -15,5 +15,6 @@ import { ProductsController } from './infrastructure/products.controller';
     GetProductByIdUseCase,
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeOrmRepository },
   ],
+  exports: [PRODUCT_REPOSITORY],
 })
 export class ProductsModule {}

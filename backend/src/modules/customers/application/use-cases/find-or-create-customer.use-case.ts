@@ -13,7 +13,7 @@ export class FindOrCreateCustomerUseCase {
     private readonly customers: ICustomerRepository,
   ) {}
 
-  async execute(data: CustomerData): Promise<Result<Customer>> {
+  async execute(data: CustomerData): Promise<Result<Customer, never>> {
     return ok(await this.customers.upsert(data));
   }
 }

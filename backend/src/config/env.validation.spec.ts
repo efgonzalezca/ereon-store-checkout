@@ -15,6 +15,9 @@ describe('validateEnv', () => {
     DB_SSL: 'true',
     PAYMENT_API_URL: 'https://gateway.test',
     PAYMENT_PUBLIC_KEY: 'pub_test_mock_key',
+    TRUST_PROXY_HOPS: '1',
+    BASE_FEE_CENTS: '300000',
+    DELIVERY_FEE_CENTS: '1200000',
   };
 
   it('parses and converts a valid environment', () => {
@@ -24,6 +27,8 @@ describe('validateEnv', () => {
       THROTTLE_TTL: 60,
       DB_PORT: 5432,
       DB_SSL: true,
+      TRUST_PROXY_HOPS: 1,
+      BASE_FEE_CENTS: 300000,
     });
   });
 
@@ -34,6 +39,18 @@ describe('validateEnv', () => {
     expect(() =>
       validateEnv({ ...validEnv, PAYMENT_API_URL: 'ftp://gateway.test' }),
     ).toThrow(/PAYMENT_API_URL/);
+  });
+
+  it('requires non-negative integer fees and proxy hops', () => {
+    expect(() => validateEnv({ ...validEnv, BASE_FEE_CENTS: '-1' })).toThrow(
+      /BASE_FEE_CENTS/,
+    );
+    expect(() =>
+      validateEnv({ ...validEnv, DELIVERY_FEE_CENTS: '1.5' }),
+    ).toThrow(/DELIVERY_FEE_CENTS/);
+    expect(() => validateEnv({ ...validEnv, TRUST_PROXY_HOPS: 'x' })).toThrow(
+      /TRUST_PROXY_HOPS/,
+    );
   });
 
   it('rejects a wildcard CORS origin', () => {

@@ -23,3 +23,7 @@ export class VoidedTransactionError extends DomainError {
 export class GatewayError extends DomainError {
   readonly code = 'GATEWAY_ERROR';
 }
+
+export class DuplicateReferenceError extends DomainError {
+  readonly code = 'DUPLICATE_REFERENCE';
+}
