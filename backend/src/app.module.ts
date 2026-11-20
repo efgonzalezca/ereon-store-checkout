@@ -8,6 +8,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { ResultInterceptor } from './shared/interceptors/result.interceptor';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AppLoggerModule } from './shared/logger/logger.module';
 
@@ -28,6 +29,7 @@ import { AppLoggerModule } from './shared/logger/logger.module';
     HealthModule,
     ProductsModule,
     CustomersModule,
+    PaymentsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -79,6 +79,20 @@ export class EnvironmentVariables {
   })
   @IsBoolean()
   DB_SSL!: boolean;
+
+  @Transform(({ value }: { value: unknown }) => trim(value))
+  @IsUrl({
+    require_protocol: true,
+    require_tld: false,
+    require_valid_protocol: true,
+    protocols: ['http', 'https'],
+  })
+  PAYMENT_API_URL!: string;
+
+  @Transform(({ value }: { value: unknown }) => trim(value))
+  @IsString()
+  @IsNotEmpty()
+  PAYMENT_PUBLIC_KEY!: string;
 }
 
 export function validateEnv(

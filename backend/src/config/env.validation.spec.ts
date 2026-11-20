@@ -13,6 +13,8 @@ describe('validateEnv', () => {
     DB_PASS: 'pass',
     DB_NAME: 'name',
     DB_SSL: 'true',
+    PAYMENT_API_URL: 'https://gateway.test',
+    PAYMENT_PUBLIC_KEY: 'pub_test_mock_key',
   };
 
   it('parses and converts a valid environment', () => {
@@ -23,6 +25,15 @@ describe('validateEnv', () => {
       DB_PORT: 5432,
       DB_SSL: true,
     });
+  });
+
+  it('requires the payment gateway settings', () => {
+    const { PAYMENT_PUBLIC_KEY: _omitted, ...rest } = validEnv;
+
+    expect(() => validateEnv(rest)).toThrow(/PAYMENT_PUBLIC_KEY/);
+    expect(() =>
+      validateEnv({ ...validEnv, PAYMENT_API_URL: 'ftp://gateway.test' }),
+    ).toThrow(/PAYMENT_API_URL/);
   });
 
   it('rejects a wildcard CORS origin', () => {

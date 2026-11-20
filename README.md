@@ -29,7 +29,8 @@ backend/src/
 ├── health/        # GET /api/health
 ├── modules/
 │   ├── products/  # domain/, application/use-cases/, infrastructure/
-│   └── customers/ # same layers; upserts customers by document type and number
+│   ├── customers/ # same layers; upserts customers by document type and number
+│   └── payments/  # payment gateway port and adapter; acceptance tokens
 │                  # Pending: transactions, deliveries
 └── shared/
     ├── rop/          # Result<T, E> and typed domain errors
@@ -106,6 +107,7 @@ Postman collection: [`docs/postman_collection.json`](docs/postman_collection.jso
 | `GET` | `/api/health` | Healthcheck |
 | `GET` | `/api/products` | List products |
 | `GET` | `/api/products/:id` | Get a product by UUID (`400` if not a UUID, `404` if it does not exist) |
+| `GET` | `/api/payments/acceptance-tokens` | Get fresh acceptance tokens and legal links for the checkout (`502` if the payment gateway fails) |
 
 ---
 
@@ -166,6 +168,8 @@ curl http://localhost:3000/api/health  # backend
 | `DB_HOST`, `DB_PORT` | PostgreSQL host and port |
 | `DB_USER`, `DB_PASS`, `DB_NAME` | PostgreSQL credentials and database |
 | `DB_SSL` | `true` to enable SSL (certificate is verified) |
+| `PAYMENT_API_URL` | Base URL of the payment gateway (`http` or `https`, no trailing path) |
+| `PAYMENT_PUBLIC_KEY` | Merchant public key, used only server side and never logged or returned |
 
 ### Environment variables (`frontend/.env.example`)
 

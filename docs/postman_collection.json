@@ -279,6 +279,110 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "GET /api/payments/acceptance-tokens",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/acceptance-tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "acceptance-tokens"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/acceptance-tokens",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "acceptance-tokens"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"acceptanceToken\": \"eyJhbGciOi...\",\n  \"acceptancePermalink\": \"https://legal.example.test/terms.pdf\",\n  \"personalAuthToken\": \"eyJhbGciOi...\",\n  \"personalAuthPermalink\": \"https://legal.example.test/personal-data.pdf\"\n}"
+            },
+            {
+              "name": "502 Bad Gateway",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/payments/acceptance-tokens",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "payments",
+                    "acceptance-tokens"
+                  ]
+                }
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"code\": \"GATEWAY_ERROR\",\n  \"message\": \"Payment gateway is unavailable\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

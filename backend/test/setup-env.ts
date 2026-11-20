@@ -11,3 +11,5 @@ process.env.DB_USER = 'test_user';
 process.env.DB_PASS = 'test_password';
 process.env.DB_NAME = 'test_db';
 process.env.DB_SSL = 'false';
+process.env.PAYMENT_API_URL = 'https://gateway.test';
+process.env.PAYMENT_PUBLIC_KEY = 'pub_test_mock_key';
