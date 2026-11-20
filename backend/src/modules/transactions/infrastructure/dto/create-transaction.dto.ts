@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsIn,
   IsInt,
+  IsObject,
   IsNotEmpty,
   IsString,
   IsUUID,
@@ -56,6 +57,7 @@ export class CreateTransactionDto {
   @IsUUID('4')
   reference!: string;
 
+  @IsObject()
   @ValidateNested()
   @Type(() => CustomerDto)
   customer!: CustomerDto;

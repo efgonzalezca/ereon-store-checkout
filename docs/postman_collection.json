@@ -15,6 +15,18 @@
     {
       "key": "reference",
       "value": "c15335ae-4f9c-4020-8f28-54924b511d18"
+    },
+    {
+      "key": "transactionId",
+      "value": "034d2a6c-1e5e-458c-bf98-292a9d2750b1"
+    },
+    {
+      "key": "acceptanceToken",
+      "value": "eyJhbGciOi..."
+    },
+    {
+      "key": "personalAuthToken",
+      "value": "eyJhbGciOi..."
     }
   ],
   "item": [
@@ -670,6 +682,504 @@
                 }
               ],
               "body": "{\n  \"statusCode\": 422,\n  \"code\": \"DUPLICATE_REFERENCE\",\n  \"message\": \"Reference is already in use\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST /api/transactions/:id/pay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "{{transactionId}}",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 APPROVED",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"id\": \"034d2a6c-1e5e-458c-bf98-292a9d2750b1\",\n  \"reference\": \"c15335ae-4f9c-4020-8f28-54924b511d18\",\n  \"status\": \"APPROVED\",\n  \"quantity\": 1,\n  \"installments\": 1,\n  \"productAmountCents\": 38990000,\n  \"baseFeeCents\": 300000,\n  \"deliveryFeeCents\": 1200000,\n  \"totalAmountCents\": 40490000\n}"
+            },
+            {
+              "name": "200 DECLINED",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"id\": \"034d2a6c-1e5e-458c-bf98-292a9d2750b1\",\n  \"reference\": \"c15335ae-4f9c-4020-8f28-54924b511d18\",\n  \"status\": \"DECLINED\",\n  \"quantity\": 1,\n  \"installments\": 1,\n  \"productAmountCents\": 38990000,\n  \"baseFeeCents\": 300000,\n  \"deliveryFeeCents\": 1200000,\n  \"totalAmountCents\": 40490000\n}"
+            },
+            {
+              "name": "200 PENDING (polling ended)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"id\": \"034d2a6c-1e5e-458c-bf98-292a9d2750b1\",\n  \"reference\": \"c15335ae-4f9c-4020-8f28-54924b511d18\",\n  \"status\": \"PENDING\",\n  \"quantity\": 1,\n  \"installments\": 1,\n  \"productAmountCents\": 38990000,\n  \"baseFeeCents\": 300000,\n  \"deliveryFeeCents\": 1200000,\n  \"totalAmountCents\": 40490000\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"42ab\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"message\": [\n    \"card.number must match /^\\\\d{13,19}$/ regular expression\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 404,\n  \"code\": \"NOT_FOUND\",\n  \"message\": \"Transaction not found\"\n}"
+            },
+            {
+              "name": "409 Not payable",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 409,\n  \"code\": \"INVALID_TRANSACTION_STATE\",\n  \"message\": \"Transaction cannot be paid\"\n}"
+            },
+            {
+              "name": "409 Out of stock",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 409,\n  \"code\": \"OUT_OF_STOCK\",\n  \"message\": \"Not enough stock for this product\"\n}"
+            },
+            {
+              "name": "429 Too many requests",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "ThrottlerException: Too Many Requests"
+            },
+            {
+              "name": "502 Bad Gateway",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"code\": \"GATEWAY_ERROR\",\n  \"message\": \"Payment gateway is unavailable\"\n}"
             }
           ]
         },

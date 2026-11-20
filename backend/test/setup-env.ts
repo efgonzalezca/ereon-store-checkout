@@ -19,3 +19,5 @@ process.env.DELIVERY_FEE_CENTS = '1200000';
 process.env.PAYMENT_PRIVATE_KEY = 'prv_test_mock_key';
 process.env.PAYMENT_INTEGRITY_KEY = 'test_integrity_mock_secret';
 process.env.PAYMENT_CURRENCY = 'COP';
+process.env.THROTTLE_PAY_TTL = '60';
+process.env.THROTTLE_PAY_LIMIT = '100';

@@ -48,6 +48,16 @@ export class EnvironmentVariables {
   @Min(1)
   THROTTLE_LIMIT!: number;
 
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  THROTTLE_PAY_TTL!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  THROTTLE_PAY_LIMIT!: number;
+
   @Transform(({ value }: { value: unknown }) => trim(value))
   @IsString()
   @IsNotEmpty()

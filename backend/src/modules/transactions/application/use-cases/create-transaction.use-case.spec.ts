@@ -48,6 +48,7 @@ const stored: Transaction = {
   id: 'c2b6c3f4-6a0b-4f06-9d3e-6a5f2f1d8a10',
   reference: input.reference,
   status: 'PENDING',
+  externalId: null,
   productId: input.productId,
   customerId: customer.id,
   quantity: 2,
@@ -65,7 +66,7 @@ function build() {
   const create = jest.fn().mockResolvedValue(ok(stored));
   const execute = jest.fn().mockResolvedValue(ok(customer));
   const useCase = new CreateTransactionUseCase(
-    { findByReference, create },
+    { findById: jest.fn(), findByReference, create, saveOutcome: jest.fn() },
     { execute: quote } as unknown as GetQuoteUseCase,
     { execute } as unknown as FindOrCreateCustomerUseCase,
   );

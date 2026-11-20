@@ -17,9 +17,10 @@ describe('FindOrCreateCustomerUseCase', () => {
     };
     const upsert = jest.fn().mockResolvedValue(saved);
 
-    const result = await new FindOrCreateCustomerUseCase({ upsert }).execute(
-      data,
-    );
+    const result = await new FindOrCreateCustomerUseCase({
+      upsert,
+      findById: jest.fn(),
+    }).execute(data);
 
     expect(upsert).toHaveBeenCalledWith(data);
     expect((result as Ok<Customer>).value).toBe(saved);

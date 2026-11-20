@@ -29,4 +29,5 @@ export interface NewTransaction extends Amounts {
 export interface Transaction extends NewTransaction {
   readonly id: string;
   readonly status: TransactionStatus;
+  readonly externalId: string | null;
 }

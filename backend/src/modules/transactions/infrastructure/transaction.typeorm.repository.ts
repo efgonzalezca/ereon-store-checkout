@@ -3,26 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { DuplicateReferenceError } from '../../../shared/rop/errors';
 import { err, ok, Result } from '../../../shared/rop/result';
-import { NewTransaction, Transaction } from '../domain/transaction';
+import {
+  NewTransaction,
+  Transaction,
+  TransactionStatus,
+} from '../domain/transaction';
 import { ITransactionRepository } from '../domain/transaction.repository.port';
+import { toTransaction } from './transaction.mapper';
 import { TransactionOrmEntity } from './transaction.orm-entity';
 
 const UNIQUE_VIOLATION = '23505';
-
-const toDomain = (row: TransactionOrmEntity): Transaction => ({
-  id: row.id,
-  reference: row.reference,
-  status: row.status,
-  productId: row.productId,
-  customerId: row.customerId,
-  quantity: row.quantity,
-  installments: row.installments,
-  productAmountCents: row.productAmountCents,
-  baseFeeCents: row.baseFeeCents,
-  deliveryFeeCents: row.deliveryFeeCents,
-  totalAmountCents: row.totalAmountCents,
-  ipAddress: row.ipAddress,
-});
 
 @Injectable()
 export class TransactionTypeOrmRepository implements ITransactionRepository {
@@ -31,9 +21,22 @@ export class TransactionTypeOrmRepository implements ITransactionRepository {
     private readonly repository: Repository<TransactionOrmEntity>,
   ) {}
 
+  async findById(id: string): Promise<Transaction | null> {
+    const row = await this.repository.findOneBy({ id });
+    return row ? toTransaction(row) : null;
+  }
+
+  async saveOutcome(
+    id: string,
+    outcome: { status: TransactionStatus; externalId: string },
+  ): Promise<Transaction> {
+    await this.repository.update({ id }, outcome);
+    return toTransaction(await this.repository.findOneByOrFail({ id }));
+  }
+
   async findByReference(reference: string): Promise<Transaction | null> {
     const row = await this.repository.findOneBy({ reference });
-    return row ? toDomain(row) : null;
+    return row ? toTransaction(row) : null;
   }
 
   async create(
@@ -41,7 +44,7 @@ export class TransactionTypeOrmRepository implements ITransactionRepository {
   ): Promise<Result<Transaction, DuplicateReferenceError>> {
     try {
       const row = await this.repository.save(this.repository.create(data));
-      return ok(toDomain(row));
+      return ok(toTransaction(row));
     } catch (error) {
       const code = (error as { driverError?: { code?: string } }).driverError
         ?.code;

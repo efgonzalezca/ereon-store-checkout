@@ -68,6 +68,9 @@ export class TransactionOrmEntity {
   @Column({ name: 'total_amount_cents', type: 'int' })
   totalAmountCents!: number;
 
+  @Column({ name: 'external_id', type: 'varchar', nullable: true })
+  externalId!: string | null;
+
   @Column({ type: 'varchar', default: 'PENDING' })
   status!: TransactionStatus;
 

@@ -15,8 +15,6 @@ import {
   InvalidTransactionStateError,
   NotFoundError,
   OutOfStockError,
-  PaymentDeclinedError,
-  VoidedTransactionError,
 } from '../rop/errors';
 import { isResult } from '../rop/result';
 
@@ -24,8 +22,6 @@ const STATUS_BY_ERROR = new Map<object, HttpStatus>([
   [NotFoundError, HttpStatus.NOT_FOUND],
   [OutOfStockError, HttpStatus.CONFLICT],
   [InvalidTransactionStateError, HttpStatus.CONFLICT],
-  [PaymentDeclinedError, HttpStatus.UNPROCESSABLE_ENTITY],
-  [VoidedTransactionError, HttpStatus.UNPROCESSABLE_ENTITY],
   [DuplicateReferenceError, HttpStatus.UNPROCESSABLE_ENTITY],
   [GatewayError, HttpStatus.BAD_GATEWAY],
 ]);

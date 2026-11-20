@@ -99,6 +99,7 @@ describe('Transactions (e2e)', () => {
 
   it.each([
     ['quantity 0', { quantity: 0 }],
+    ['a missing customer', { customer: undefined }],
     ['installments 37', { installments: 37 }],
     [
       'an invalid document type',

@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { ResultInterceptor } from './shared/interceptors/result.interceptor';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { ProductsModule } from './modules/products/products.module';
 import { AppLoggerModule } from './shared/logger/logger.module';
@@ -32,6 +33,7 @@ import { AppLoggerModule } from './shared/logger/logger.module';
     CustomersModule,
     PaymentsModule,
     TransactionsModule,
+    DeliveriesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

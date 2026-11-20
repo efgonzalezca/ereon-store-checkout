@@ -22,15 +22,22 @@ const row = {
   ...data,
   id: 'c2b6c3f4-6a0b-4f06-9d3e-6a5f2f1d8a10',
   status: 'PENDING',
+  externalId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 } as TransactionOrmEntity;
 
-function build(overrides: Partial<Record<'save' | 'findOneBy', jest.Mock>>) {
+function build(
+  overrides: Partial<
+    Record<'save' | 'findOneBy' | 'update' | 'findOneByOrFail', jest.Mock>
+  >,
+) {
   const repository = {
     create: (value: unknown) => value,
     save: overrides.save ?? jest.fn(),
     findOneBy: overrides.findOneBy ?? jest.fn(),
+    update: overrides.update ?? jest.fn(),
+    findOneByOrFail: overrides.findOneByOrFail ?? jest.fn(),
   };
   return new TransactionTypeOrmRepository(
     repository as unknown as Repository<TransactionOrmEntity>,
@@ -76,5 +83,32 @@ describe('TransactionTypeOrmRepository', () => {
     await expect(
       build({ save: jest.fn().mockRejectedValue(failure) }).create(data),
     ).rejects.toBe(failure);
+  });
+
+  it('finds by id and stores the gateway outcome', async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const approved = { ...row, status: 'DECLINED', externalId: 'gw-1' };
+    const repo = build({
+      findOneBy: jest
+        .fn()
+        .mockResolvedValueOnce(row)
+        .mockResolvedValueOnce(null),
+      update,
+      findOneByOrFail: jest.fn().mockResolvedValue(approved),
+    });
+
+    expect(await repo.findById(row.id)).toMatchObject({ id: row.id });
+    expect(await repo.findById('missing')).toBeNull();
+
+    const saved = await repo.saveOutcome(row.id, {
+      status: 'DECLINED',
+      externalId: 'gw-1',
+    });
+
+    expect(update).toHaveBeenCalledWith(
+      { id: row.id },
+      { status: 'DECLINED', externalId: 'gw-1' },
+    );
+    expect(saved).toMatchObject({ status: 'DECLINED', externalId: 'gw-1' });
   });
 });

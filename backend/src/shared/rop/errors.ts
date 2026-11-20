@@ -12,14 +12,6 @@ export class InvalidTransactionStateError extends DomainError {
   readonly code = 'INVALID_TRANSACTION_STATE';
 }
 
-export class PaymentDeclinedError extends DomainError {
-  readonly code = 'PAYMENT_DECLINED';
-}
-
-export class VoidedTransactionError extends DomainError {
-  readonly code = 'TRANSACTION_VOIDED';
-}
-
 export class GatewayError extends DomainError {
   readonly code = 'GATEWAY_ERROR';
 }

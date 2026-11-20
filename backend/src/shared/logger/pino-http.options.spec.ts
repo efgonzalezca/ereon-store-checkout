@@ -76,6 +76,7 @@ describe('buildPinoHttpOptions', () => {
       apiKey: REDACT_CENSOR,
       action: 'pay',
     });
-    expect(JSON.stringify(line)).not.toMatch(/4242|123|999|key_test_mock/);
+    const { pid: _pid, ...logged } = line;
+    expect(JSON.stringify(logged)).not.toMatch(/4242|123|999|key_test_mock/);
   });
 });
