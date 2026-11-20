@@ -43,6 +43,10 @@ describe('checkout storage', () => {
     ['an array', '[]'],
     ['a step without product', JSON.stringify({ step: 2 })],
     [
+      'a step without reference',
+      JSON.stringify({ step: 2, productId: 'p', traceId: 't' }),
+    ],
+    [
       'a legacy step 3',
       JSON.stringify({ step: 3, productId: 'p', traceId: 't' }),
     ],
@@ -57,6 +61,7 @@ describe('checkout storage', () => {
       step: 2,
       productId: 'p-1',
       traceId: 't-1',
+      reference: 'r-1',
       formSection: 4,
     });
 
@@ -68,6 +73,7 @@ describe('checkout storage', () => {
       step: 2,
       productId: 'p-1',
       traceId: 't-1',
+      reference: 'r-1',
       quantity: -4,
       installments: 99,
       customer: { documentType: 'XX', fullName: 7 },

@@ -30,6 +30,7 @@ interface CardSession {
   tokens: AcceptanceTokens | null;
   tokensStatus: TokensStatus;
   loadTokens: () => void;
+  clearSensitive: () => void;
 }
 
 const emptyCard: CardInput = {
@@ -70,9 +71,23 @@ export function CardSessionProvider({ children }: { children: ReactNode }) {
       });
   }, [dispatch]);
 
+  const clearSensitive = useCallback(() => {
+    setCard(emptyCard);
+    setTokens(null);
+    setTokensStatus('idle');
+    requested.current = false;
+  }, []);
+
   const value = useMemo(
-    () => ({ card, setCardField, tokens, tokensStatus, loadTokens }),
-    [card, setCardField, tokens, tokensStatus, loadTokens],
+    () => ({
+      card,
+      setCardField,
+      tokens,
+      tokensStatus,
+      loadTokens,
+      clearSensitive,
+    }),
+    [card, setCardField, tokens, tokensStatus, loadTokens, clearSensitive],
   );
 
   return (

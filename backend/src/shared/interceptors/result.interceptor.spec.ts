@@ -2,6 +2,7 @@ import { CallHandler, ExecutionContext, HttpException } from '@nestjs/common';
 import { lastValueFrom, of } from 'rxjs';
 import { DomainError } from '../rop/domain-error';
 import {
+  CardRejectedError,
   DuplicateReferenceError,
   GatewayError,
   InvalidTransactionStateError,
@@ -38,6 +39,7 @@ describe('ResultInterceptor', () => {
       [new OutOfStockError('m'), 409],
       [new InvalidTransactionStateError('m'), 409],
       [new DuplicateReferenceError('m'), 422],
+      [new CardRejectedError('m'), 422],
       [new GatewayError('m'), 502],
     ];
 

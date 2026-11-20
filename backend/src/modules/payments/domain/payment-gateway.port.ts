@@ -1,4 +1,4 @@
-import { GatewayError } from '../../../shared/rop/errors';
+import { CardRejectedError, GatewayError } from '../../../shared/rop/errors';
 import { Result } from '../../../shared/rop/result';
 
 export interface AcceptanceTokens {
@@ -43,7 +43,9 @@ export interface ChargeResult {
 
 export interface IPaymentGatewayPort {
   getAcceptanceTokens(): Promise<Result<AcceptanceTokens, GatewayError>>;
-  charge(request: ChargeRequest): Promise<Result<ChargeResult, GatewayError>>;
+  charge(
+    request: ChargeRequest,
+  ): Promise<Result<ChargeResult, GatewayError | CardRejectedError>>;
 }
 
 export const PAYMENT_GATEWAY = Symbol('IPaymentGatewayPort');

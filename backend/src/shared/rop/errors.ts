@@ -19,3 +19,7 @@ export class GatewayError extends DomainError {
 export class DuplicateReferenceError extends DomainError {
   readonly code = 'DUPLICATE_REFERENCE';
 }
+
+export class CardRejectedError extends DomainError {
+  readonly code = 'CARD_REJECTED';
+}

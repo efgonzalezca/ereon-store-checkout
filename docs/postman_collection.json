@@ -1080,6 +1080,57 @@
               "body": "{\n  \"statusCode\": 409,\n  \"code\": \"OUT_OF_STOCK\",\n  \"message\": \"Not enough stock for this product\"\n}"
             },
             {
+              "name": "422 Card rejected",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/pay",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}",
+                    "pay"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"card\": {\n    \"number\": \"4242424242424242\",\n    \"cvc\": \"123\",\n    \"expMonth\": \"12\",\n    \"expYear\": \"30\",\n    \"holder\": \"JANE DOE\"\n  },\n  \"shipping\": {\n    \"address\": \"Calle 1 # 2-3\",\n    \"city\": \"Bogota\",\n    \"region\": \"Cundinamarca\",\n    \"postalCode\": \"110111\"\n  },\n  \"acceptanceToken\": \"{{acceptanceToken}}\",\n  \"personalAuthToken\": \"{{personalAuthToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 422,\n  \"code\": \"CARD_REJECTED\",\n  \"message\": \"Card was rejected\"\n}"
+            },
+            {
               "name": "429 Too many requests",
               "originalRequest": {
                 "method": "POST",

@@ -7,12 +7,14 @@ import {
   PAYMENT_GATEWAY,
 } from '../../../payments/domain/payment-gateway.port';
 import {
+  CardRejectedError,
   GatewayError,
   InvalidTransactionStateError,
   NotFoundError,
   OutOfStockError,
 } from '../../../../shared/rop/errors';
 import { err, ok, Result } from '../../../../shared/rop/result';
+import { GetQuoteUseCase } from './get-quote.use-case';
 import {
   IPaymentSettlement,
   PAYMENT_SETTLEMENT,
@@ -32,7 +34,11 @@ export interface ProcessPaymentInput {
 }
 
 export type ProcessPaymentError =
-  NotFoundError | InvalidTransactionStateError | OutOfStockError | GatewayError;
+  | NotFoundError
+  | InvalidTransactionStateError
+  | OutOfStockError
+  | GatewayError
+  | CardRejectedError;
 
 @Injectable()
 export class ProcessPaymentUseCase {
@@ -42,6 +48,7 @@ export class ProcessPaymentUseCase {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: IPaymentGatewayPort,
     @Inject(PAYMENT_SETTLEMENT) private readonly settlement: IPaymentSettlement,
     private readonly getCustomer: GetCustomerByIdUseCase,
+    private readonly getQuote: GetQuoteUseCase,
   ) {}
 
   async execute(
@@ -57,6 +64,12 @@ export class ProcessPaymentUseCase {
 
     const customer = await this.getCustomer.execute(transaction.customerId);
     if (!customer.isOk) return customer;
+
+    const availability = await this.getQuote.execute(
+      transaction.productId,
+      transaction.quantity,
+    );
+    if (!availability.isOk) return availability;
 
     const charge = await this.gateway.charge({
       reference: transaction.reference,

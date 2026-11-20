@@ -28,12 +28,15 @@ export function parseCheckoutState(raw: unknown): CheckoutState {
   const last4 = nullableText(raw.cardLast4);
   const productId = nullableText(raw.productId);
   const traceId = nullableText(raw.traceId);
+  const reference = nullableText(raw.reference);
   const requestedSection =
     raw.formSection === 2 || raw.formSection === 3 || raw.formSection === 4
       ? raw.formSection
       : 1;
 
-  if (raw.step !== 2 || !productId || !traceId) return initialCheckoutState;
+  if (raw.step !== 2 || !productId || !traceId || !reference) {
+    return initialCheckoutState;
+  }
 
   const formSection = requestedSection === 4 && !last4 ? 3 : requestedSection;
 
@@ -43,6 +46,8 @@ export function parseCheckoutState(raw: unknown): CheckoutState {
     productId,
     quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
     traceId,
+    reference,
+    transactionId: nullableText(raw.transactionId),
     customer: {
       documentType: documentType ?? 'CC',
       documentNumber: text(customer.documentNumber),

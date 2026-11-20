@@ -25,15 +25,19 @@ export const products: Product[] = [
   },
 ];
 
-export function createFakeApi(get: jest.Mock): ThunkExtra['api'] {
-  return { get } as unknown as ThunkExtra['api'];
+export function createFakeApi(
+  get: jest.Mock,
+  post: jest.Mock = jest.fn(),
+): ThunkExtra['api'] {
+  return { get, post } as unknown as ThunkExtra['api'];
 }
 
 export function renderWithStore(
   ui: ReactElement,
   get: jest.Mock,
   storage: StorageLike | null = null,
+  post: jest.Mock = jest.fn(),
 ) {
-  const store = setupStore({ api: createFakeApi(get) }, storage);
+  const store = setupStore({ api: createFakeApi(get, post) }, storage);
   return { store, ...render(<Provider store={store}>{ui}</Provider>) };
 }
