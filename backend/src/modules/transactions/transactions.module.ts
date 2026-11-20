@@ -4,6 +4,7 @@ import { CustomersModule } from '../customers/customers.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { ProductsModule } from '../products/products.module';
 import { CreateTransactionUseCase } from './application/use-cases/create-transaction.use-case';
+import { GetTransactionByIdUseCase } from './application/use-cases/get-transaction-by-id.use-case';
 import { GetQuoteUseCase } from './application/use-cases/get-quote.use-case';
 import { ProcessPaymentUseCase } from './application/use-cases/process-payment.use-case';
 import { PAYMENT_SETTLEMENT } from './domain/payment-settlement.port';
@@ -28,6 +29,7 @@ import { TransactionsController } from './infrastructure/transactions.controller
     CreateTransactionUseCase,
     GetQuoteUseCase,
     ProcessPaymentUseCase,
+    GetTransactionByIdUseCase,
     { provide: TRANSACTION_REPOSITORY, useClass: TransactionTypeOrmRepository },
     { provide: PAYMENT_SETTLEMENT, useClass: PaymentSettlementTypeOrm },
     { provide: FEES_PROVIDER, useClass: EnvFeesProvider },

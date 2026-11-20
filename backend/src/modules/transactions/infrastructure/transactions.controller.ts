@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -12,6 +13,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Logger } from 'nestjs-pino';
 import { CreateTransactionUseCase } from '../application/use-cases/create-transaction.use-case';
+import { GetTransactionByIdUseCase } from '../application/use-cases/get-transaction-by-id.use-case';
 import {
   ProcessPaymentError,
   ProcessPaymentUseCase,
@@ -57,6 +59,7 @@ export class TransactionsController {
   constructor(
     private readonly createTransaction: CreateTransactionUseCase,
     private readonly processPayment: ProcessPaymentUseCase,
+    private readonly getTransaction: GetTransactionByIdUseCase,
     private readonly logger: Logger,
   ) {}
 
@@ -74,6 +77,14 @@ export class TransactionsController {
       ...dto,
       ipAddress: resolveClientIp(request.ip),
     });
+    return result.map(toResponse);
+  }
+
+  @Get(':id')
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<Result<TransactionResponse, NotFoundError>> {
+    const result = await this.getTransaction.execute(id);
     return result.map(toResponse);
   }
 

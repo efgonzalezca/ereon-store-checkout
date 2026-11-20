@@ -1184,6 +1184,179 @@
           ]
         },
         {
+          "name": "GET /api/transactions/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "{{traceId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/{{transactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "{{transactionId}}"
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 APPROVED",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"id\": \"034d2a6c-1e5e-458c-bf98-292a9d2750b1\",\n  \"reference\": \"c15335ae-4f9c-4020-8f28-54924b511d18\",\n  \"status\": \"APPROVED\",\n  \"quantity\": 1,\n  \"installments\": 1,\n  \"productAmountCents\": 38990000,\n  \"baseFeeCents\": 300000,\n  \"deliveryFeeCents\": 1200000,\n  \"totalAmountCents\": 40490000\n}"
+            },
+            {
+              "name": "200 PENDING",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"id\": \"034d2a6c-1e5e-458c-bf98-292a9d2750b1\",\n  \"reference\": \"c15335ae-4f9c-4020-8f28-54924b511d18\",\n  \"status\": \"PENDING\",\n  \"quantity\": 1,\n  \"installments\": 1,\n  \"productAmountCents\": 38990000,\n  \"baseFeeCents\": 300000,\n  \"deliveryFeeCents\": 1200000,\n  \"totalAmountCents\": 40490000\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/not-a-uuid",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "not-a-uuid"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Trace-Id",
+                    "value": "{{traceId}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/transactions/{{transactionId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "transactions",
+                    "{{transactionId}}"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "X-Trace-Id",
+                  "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 404,\n  \"code\": \"NOT_FOUND\",\n  \"message\": \"Transaction not found\"\n}"
+            }
+          ]
+        },
+        {
           "name": "GET /api/quote",
           "request": {
             "method": "GET",

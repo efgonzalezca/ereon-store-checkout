@@ -120,6 +120,7 @@ Postman collection: [`docs/postman_collection.json`](docs/postman_collection.jso
 | `GET` | `/api/quote` | Get the amount breakdown (`productId` and `quantity` as query params) calculated by the backend: product, base fee, delivery fee and total (`400` invalid params, `404` product, `409` stock) |
 | `POST` | `/api/transactions` | Create a `PENDING` transaction; retrying the same request returns the same transaction (`400` invalid data, `404` product, `409` stock, `422` reference reused with different data) |
 | `POST` | `/api/transactions/:id/pay` | Pay a `PENDING` transaction with a card: charges the gateway and answers `200` with the final `status` (`APPROVED`, `DECLINED`, `ERROR`, `VOIDED` or `PENDING`). An approved payment discounts the stock and creates the delivery in one database transaction (`400` invalid data, `404`, `409` not payable or out of stock, `429` rate limit, `502` gateway) |
+| `GET` | `/api/transactions/:id` | Get a transaction and its current `status` (`400` if not a UUID, `404` if it does not exist) |
 | `GET` | `/api/payments/acceptance-tokens` | Get fresh acceptance tokens and legal links for the checkout (`502` if the payment gateway fails) |
 
 ---
