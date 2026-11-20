@@ -2,11 +2,16 @@ import { INestApplication } from '@nestjs/common';
 import { Server } from 'node:http';
 import request from 'supertest';
 import { CUSTOMER_REPOSITORY } from '../src/modules/customers/domain/customer.repository.port';
+import { PRODUCT_REPOSITORY } from '../src/modules/products/domain/product.repository.port';
 import { PAYMENT_GATEWAY } from '../src/modules/payments/domain/payment-gateway.port';
 import { PAYMENT_SETTLEMENT } from '../src/modules/transactions/domain/payment-settlement.port';
 import { Transaction } from '../src/modules/transactions/domain/transaction';
 import { TRANSACTION_REPOSITORY } from '../src/modules/transactions/domain/transaction.repository.port';
-import { GatewayError, OutOfStockError } from '../src/shared/rop/errors';
+import {
+  CardRejectedError,
+  GatewayError,
+  OutOfStockError,
+} from '../src/shared/rop/errors';
 import { err, ok } from '../src/shared/rop/result';
 import { createTestApp } from './create-test-app';
 
@@ -51,6 +56,7 @@ describe('Pay (e2e)', () => {
   const saveOutcome = jest.fn();
   const charge = jest.fn();
   const settleApproved = jest.fn();
+  const findProduct = jest.fn();
   let app: INestApplication;
   let server: Server;
 
@@ -67,6 +73,7 @@ describe('Pay (e2e)', () => {
             findById: () => Promise.resolve({ email: 'jane@example.com' }),
           },
         },
+        { token: PRODUCT_REPOSITORY, value: { findById: findProduct } },
         { token: PAYMENT_GATEWAY, value: { charge } },
         { token: PAYMENT_SETTLEMENT, value: { settleApproved } },
       ],
@@ -77,6 +84,11 @@ describe('Pay (e2e)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     findById.mockResolvedValue(pending);
+    findProduct.mockResolvedValue({
+      id: pending.productId,
+      priceInCents: 1,
+      stock: 5,
+    });
     charge.mockResolvedValue(ok({ status: 'APPROVED', externalId: 'gw-1' }));
     settleApproved.mockResolvedValue(
       ok({ ...pending, status: 'APPROVED', externalId: 'gw-1' }),
@@ -156,6 +168,18 @@ describe('Pay (e2e)', () => {
       code: 'INVALID_TRANSACTION_STATE',
     });
 
+    findProduct.mockResolvedValueOnce({
+      id: pending.productId,
+      priceInCents: 1,
+      stock: 0,
+    });
+    const noStockBefore = await request(server)
+      .post(`/api/transactions/${id}/pay`)
+      .send(body)
+      .expect(409);
+    expect(noStockBefore.body).toMatchObject({ code: 'OUT_OF_STOCK' });
+    expect(charge).not.toHaveBeenCalled();
+
     settleApproved.mockResolvedValueOnce(err(new OutOfStockError('no stock')));
     await request(server)
       .post(`/api/transactions/${id}/pay`)
@@ -168,5 +192,12 @@ describe('Pay (e2e)', () => {
       .send(body)
       .expect(502);
     expect(gateway.body).toMatchObject({ code: 'GATEWAY_ERROR' });
+
+    charge.mockResolvedValueOnce(err(new CardRejectedError('rejected')));
+    const rejected = await request(server)
+      .post(`/api/transactions/${id}/pay`)
+      .send(body)
+      .expect(422);
+    expect(rejected.body).toMatchObject({ code: 'CARD_REJECTED' });
   });
 });

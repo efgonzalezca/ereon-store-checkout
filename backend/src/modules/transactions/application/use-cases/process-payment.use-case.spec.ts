@@ -1,6 +1,7 @@
 import { GetCustomerByIdUseCase } from '../../../customers/application/use-cases/get-customer-by-id.use-case';
 import { Customer } from '../../../customers/domain/customer';
 import {
+  CardRejectedError,
   GatewayError,
   InvalidTransactionStateError,
   NotFoundError,
@@ -8,6 +9,7 @@ import {
 } from '../../../../shared/rop/errors';
 import { Err, err, ok, Ok } from '../../../../shared/rop/result';
 import { Transaction } from '../../domain/transaction';
+import { GetQuoteUseCase } from './get-quote.use-case';
 import {
   ProcessPaymentInput,
   ProcessPaymentUseCase,
@@ -73,11 +75,13 @@ function build() {
       ok({ ...pending, status: 'APPROVED', externalId: 'gw-1' }),
     );
   const getCustomer = jest.fn().mockResolvedValue(ok(customer));
+  const getQuote = jest.fn().mockResolvedValue(ok({}));
   const useCase = new ProcessPaymentUseCase(
     { findById, findByReference: jest.fn(), create: jest.fn(), saveOutcome },
     { getAcceptanceTokens: jest.fn(), charge },
     { settleApproved },
     { execute: getCustomer } as unknown as GetCustomerByIdUseCase,
+    { execute: getQuote } as unknown as GetQuoteUseCase,
   );
   return {
     useCase,
@@ -86,6 +90,7 @@ function build() {
     charge,
     settleApproved,
     getCustomer,
+    getQuote,
   };
 }
 
@@ -148,6 +153,36 @@ describe('ProcessPaymentUseCase', () => {
     expect(saveOutcome).not.toHaveBeenCalled();
     expect(settleApproved).not.toHaveBeenCalled();
   });
+
+  it('propagates a rejected card and leaves the transaction untouched', async () => {
+    const { useCase, charge, saveOutcome } = build();
+    const rejection = err(new CardRejectedError('rejected'));
+    charge.mockResolvedValue(rejection);
+
+    expect(await useCase.execute(input)).toBe(rejection);
+    expect(saveOutcome).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['the stock ran out', new OutOfStockError('no stock')],
+    ['the product disappeared', new NotFoundError('missing')],
+  ])(
+    'does not charge when %s before the payment starts',
+    async (_name, error) => {
+      const { useCase, getQuote, charge, saveOutcome } = build();
+      getQuote.mockResolvedValue(err(error));
+
+      const result = await useCase.execute(input);
+
+      expect((result as Err<typeof error>).error).toBe(error);
+      expect(getQuote).toHaveBeenCalledWith(
+        pending.productId,
+        pending.quantity,
+      );
+      expect(charge).not.toHaveBeenCalled();
+      expect(saveOutcome).not.toHaveBeenCalled();
+    },
+  );
 
   it('propagates OutOfStockError when the stock is gone after the charge', async () => {
     const { useCase, settleApproved } = build();

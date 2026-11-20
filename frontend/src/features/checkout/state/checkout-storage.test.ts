@@ -43,6 +43,10 @@ describe('checkout storage', () => {
     ['an array', '[]'],
     ['a step without product', JSON.stringify({ step: 2 })],
     [
+      'a step without reference',
+      JSON.stringify({ step: 2, productId: 'p', traceId: 't' }),
+    ],
+    [
       'a legacy step 3',
       JSON.stringify({ step: 3, productId: 'p', traceId: 't' }),
     ],
@@ -57,10 +61,35 @@ describe('checkout storage', () => {
       step: 2,
       productId: 'p-1',
       traceId: 't-1',
+      reference: 'r-1',
       formSection: 4,
     });
 
     expect(state.formSection).toBe(3);
+  });
+
+  it('restores a payment attempt only on the summary with a stored card', () => {
+    const stored = {
+      step: 2,
+      productId: 'p-1',
+      traceId: 't-1',
+      reference: 'r-1',
+      paymentAttempted: true,
+    };
+
+    expect(
+      parseCheckoutState({
+        ...stored,
+        formSection: 4,
+        cardLast4: '4242',
+      }).paymentAttempted,
+    ).toBe(true);
+    expect(
+      parseCheckoutState({ ...stored, formSection: 4 }).paymentAttempted,
+    ).toBe(false);
+    expect(
+      parseCheckoutState({ ...stored, formSection: 3 }).paymentAttempted,
+    ).toBe(false);
   });
 
   it('sanitizes tampered values', () => {
@@ -68,6 +97,7 @@ describe('checkout storage', () => {
       step: 2,
       productId: 'p-1',
       traceId: 't-1',
+      reference: 'r-1',
       quantity: -4,
       installments: 99,
       customer: { documentType: 'XX', fullName: 7 },

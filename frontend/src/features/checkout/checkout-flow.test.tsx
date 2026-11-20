@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import userEvent from '@testing-library/user-event';
 import { App } from '@/App';
 import { products, renderWithStore } from '@/test/render-with-store';
@@ -12,12 +13,62 @@ const tokens = {
   personalAuthPermalink: 'https://legal.test/data',
 };
 
-function createApi(tokensResult: 'ok' | 'fail' = 'ok') {
+const amounts = {
+  productAmountCents: 8990000,
+  baseFeeCents: 300000,
+  deliveryFeeCents: 1200000,
+  totalAmountCents: 10490000,
+};
+
+const transaction = (status: string) => ({
+  id: 'tx-1',
+  reference: 'ref-1',
+  status,
+  quantity: 1,
+  installments: 1,
+  ...amounts,
+});
+
+const httpError = (status: number, data: unknown = {}) =>
+  new AxiosError('failed', 'ERR_BAD_RESPONSE', undefined, undefined, {
+    status,
+    data,
+  } as AxiosResponse);
+
+function createApi(
+  options: {
+    tokens?: 'ok' | 'fail';
+    quote?: unknown;
+    status?: string | Error;
+  } = {},
+) {
   return jest.fn((url: string) => {
     if (url === '/api/products') return Promise.resolve({ data: products });
-    return tokensResult === 'ok'
-      ? Promise.resolve({ data: tokens })
-      : Promise.reject(new Error('gateway down'));
+    if (url.startsWith('/api/transactions/')) {
+      const { status } = options;
+      return status instanceof Error
+        ? Promise.reject(status)
+        : Promise.resolve({ data: transaction(status ?? 'PENDING') });
+    }
+    if (url === '/api/quote') {
+      return options.quote instanceof Error
+        ? Promise.reject(options.quote)
+        : Promise.resolve({ data: options.quote ?? amounts });
+    }
+    return options.tokens === 'fail'
+      ? Promise.reject(new Error('gateway down'))
+      : Promise.resolve({ data: tokens });
+  });
+}
+
+function createPost(outcome: string | Error = 'APPROVED') {
+  return jest.fn((url: string) => {
+    if (url === '/api/transactions') {
+      return Promise.resolve({ data: transaction('PENDING') });
+    }
+    return outcome instanceof Error
+      ? Promise.reject(outcome)
+      : Promise.resolve({ data: transaction(outcome) });
   });
 }
 
@@ -53,6 +104,17 @@ async function fillCard(user: User, dialog: HTMLElement) {
   await user.type(form.getByLabelText('Name on card'), 'JANE DOE');
   await user.type(form.getByLabelText(/expiry/i), '1299');
   await user.type(form.getByLabelText('CVC'), '123');
+}
+
+async function goToSummary(user: User, dialog: HTMLElement) {
+  await goToCardStep(user, dialog);
+  await fillCard(user, dialog);
+  await waitFor(() =>
+    expect(within(dialog).getByRole('checkbox')).toBeEnabled(),
+  );
+  await user.click(within(dialog).getByRole('checkbox'));
+  await user.click(within(dialog).getByRole('button', { name: 'Continue' }));
+  await within(dialog).findByText('Total');
 }
 
 async function next(user: User, dialog: HTMLElement) {
@@ -188,19 +250,14 @@ describe('checkout modal', () => {
     ).toBeInTheDocument();
   });
 
-  it('opens the read-only summary and never persists the card or the tokens', async () => {
+  it('shows the breakdown calculated by the backend and never persists the card or the tokens', async () => {
     const user = userEvent.setup();
     const storage = memoryStorage();
-    const { store } = renderWithStore(<App />, createApi(), storage);
+    const get = createApi();
+    const { store } = renderWithStore(<App />, get, storage);
     const dialog = await openCheckout(user);
-    await goToCardStep(user, dialog);
-    await fillCard(user, dialog);
-    await waitFor(() =>
-      expect(within(dialog).getByRole('checkbox')).toBeEnabled(),
-    );
-    await user.click(within(dialog).getByRole('checkbox'));
 
-    await user.click(within(dialog).getByRole('button', { name: 'Continue' }));
+    await goToSummary(user, dialog);
 
     expect(store.getState().checkout).toMatchObject({
       step: 2,
@@ -208,12 +265,22 @@ describe('checkout modal', () => {
       cardLast4: '4242',
       cardBrand: 'VISA',
     });
-    expect(within(dialog).getByText('Jane Doe')).toBeInTheDocument();
-    expect(within(dialog).getByText('•••• 4242')).toBeInTheDocument();
-    expect(within(dialog).getByText('Calle 1 # 2-3')).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith('/api/quote', {
+      params: { productId: 'p-1', quantity: 1 },
+      headers: { 'X-Trace-Id': store.getState().checkout.traceId },
+    });
+    const form = within(dialog);
+    expect(form.getByText('Product').nextSibling).toHaveTextContent('$ 89.900');
+    expect(form.getByText('Base fee').nextSibling).toHaveTextContent('$ 3.000');
+    expect(form.getByText('Delivery fee').nextSibling).toHaveTextContent(
+      '$ 12.000',
+    );
+    expect(form.getByText('Total').nextSibling).toHaveTextContent('$ 104.900');
+    expect(form.getByText('•••• 4242')).toBeInTheDocument();
+    expect(form.getByText('Calle 1 # 2-3')).toBeInTheDocument();
     expect(
-      within(dialog).queryByRole('button', { name: /pay/i }),
-    ).not.toBeInTheDocument();
+      form.getByRole('button', { name: /^Pay .*104\.900$/ }),
+    ).toBeEnabled();
 
     const persisted = storage.data[CHECKOUT_STORAGE_KEY];
     expect(persisted).toContain('4242');
@@ -229,10 +296,8 @@ describe('checkout modal', () => {
       expect(persisted).not.toContain(secret);
     }
 
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Edit shipping info' }),
-    );
-    expect(within(dialog).getByLabelText('City')).toHaveValue('Bogota');
+    await user.click(form.getByRole('button', { name: 'Edit shipping info' }));
+    expect(form.getByLabelText('City')).toHaveValue('Bogota');
   });
 
   it('lets the user jump between steps and marks only the complete ones', async () => {
@@ -360,7 +425,7 @@ describe('checkout modal', () => {
 
   it('lets the user retry when the terms cannot be loaded', async () => {
     const user = userEvent.setup();
-    const get = createApi('fail');
+    const get = createApi({ tokens: 'fail' });
     renderWithStore(<App />, get);
     const dialog = await openCheckout(user);
     await goToCardStep(user, dialog);
@@ -396,4 +461,460 @@ describe('checkout modal', () => {
     await waitFor(() => expect(store.getState().checkout.step).toBe(1));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+});
+
+describe('payment from the summary', () => {
+  async function openSummary(options: {
+    post: jest.Mock;
+    api?: jest.Mock;
+    storage?: ReturnType<typeof memoryStorage>;
+  }) {
+    const user = userEvent.setup();
+    const get = options.api ?? createApi();
+    const rendered = renderWithStore(
+      <App />,
+      get,
+      options.storage ?? memoryStorage(),
+      options.post,
+    );
+    const dialog = await openCheckout(user);
+    await goToSummary(user, dialog);
+    return { user, dialog, get, ...rendered };
+  }
+
+  it('creates the transaction, pays with the card and clears it from memory', async () => {
+    const post = createPost('APPROVED');
+    const storage = memoryStorage();
+    const { user, dialog, store } = await openSummary({ post, storage });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment approved' }),
+    ).toBeInTheDocument();
+    const { traceId, reference } = store.getState().checkout;
+    const headers = { 'X-Trace-Id': traceId };
+    expect(post).toHaveBeenNthCalledWith(
+      1,
+      '/api/transactions',
+      {
+        productId: 'p-1',
+        quantity: 1,
+        installments: 1,
+        reference,
+        customer: {
+          documentType: 'CC',
+          documentNumber: '1020304050',
+          fullName: 'Jane Doe',
+          email: 'jane@example.com',
+          phone: '3001112233',
+        },
+      },
+      { headers },
+    );
+    expect(post).toHaveBeenNthCalledWith(
+      2,
+      '/api/transactions/tx-1/pay',
+      {
+        card: {
+          number: '4242424242424242',
+          cvc: '123',
+          expMonth: '12',
+          expYear: '99',
+          holder: 'JANE DOE',
+        },
+        shipping: {
+          address: 'Calle 1 # 2-3',
+          city: 'Bogota',
+          region: 'Cundinamarca',
+          postalCode: '110111',
+        },
+        acceptanceToken: tokens.acceptanceToken,
+        personalAuthToken: tokens.personalAuthToken,
+      },
+      { headers, timeout: 35000 },
+    );
+    expect(store.getState().checkout.transactionId).toBe('tx-1');
+
+    const persisted = storage.data[CHECKOUT_STORAGE_KEY];
+    expect(persisted).not.toContain('4242424242424242');
+    expect(persisted).not.toContain(tokens.acceptanceToken);
+    expect(within(dialog).getByText(reference as string)).toBeInTheDocument();
+    expect(within(dialog).getByText(traceId as string)).toBeInTheDocument();
+  });
+
+  it('disables "Pay" while processing so it cannot be sent twice', async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    const post = jest.fn((url: string) =>
+      url === '/api/transactions'
+        ? Promise.resolve({ data: transaction('PENDING') })
+        : new Promise((resolve) => {
+            finish = resolve;
+          }),
+    );
+    const { user, dialog } = await openSummary({ post });
+
+    await user.dblClick(
+      within(dialog).getByRole('button', { name: /^Pay \$/ }),
+    );
+
+    const processing = await within(dialog).findByRole('button', {
+      name: 'Processing...',
+    });
+    expect(processing).toBeDisabled();
+    expect(post).toHaveBeenCalledTimes(2);
+
+    finish({ data: transaction('APPROVED') });
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment approved' }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['DECLINED', 'Payment declined'],
+    ['ERROR', 'Payment failed'],
+    ['VOIDED', 'Payment voided'],
+  ])(
+    'shows the %s result and returns to the card step with a new reference',
+    async (outcome, title) => {
+      const post = createPost(outcome);
+      const { user, dialog, store, get } = await openSummary({ post });
+      const before = store.getState().checkout.reference;
+
+      await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+
+      expect(
+        await within(dialog).findByRole('heading', { name: title }),
+      ).toBeInTheDocument();
+      expect(within(dialog).getByText(before as string)).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          'For your security, your card details were cleared.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('button', { name: 'Check status' }),
+      ).not.toBeInTheDocument();
+
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Try another card' }),
+      );
+
+      const state = store.getState().checkout;
+      expect(state.formSection).toBe(3);
+      expect(state.transactionId).toBeNull();
+      expect(state.paymentAttempted).toBe(false);
+      expect(state.reference).not.toBe(before);
+      expect(within(dialog).getByLabelText('Card number')).toHaveValue('');
+      expect(
+        within(dialog).queryByText('This field is required'),
+      ).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          get.mock.calls.filter(
+            ([url]) => url === '/api/payments/acceptance-tokens',
+          ),
+        ).toHaveLength(2),
+      );
+    },
+  );
+
+  it('keeps the same transaction when the gateway rejects the card and the user tries another one', async () => {
+    const post = createPost(httpError(422, { code: 'CARD_REJECTED' }));
+    const { user, dialog, store } = await openSummary({ post });
+    const before = store.getState().checkout.reference;
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Card not accepted' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Try another card' }),
+    );
+
+    expect(store.getState().checkout).toMatchObject({
+      formSection: 3,
+      transactionId: 'tx-1',
+      reference: before,
+      paymentAttempted: false,
+    });
+    expect(within(dialog).getByLabelText('Card number')).toHaveValue('');
+  });
+
+  it('goes back to the catalog after an approved payment, clearing the checkout and refreshing the stock', async () => {
+    const storage = memoryStorage();
+    const { user, dialog, store, get } = await openSummary({
+      post: createPost('APPROVED'),
+      storage,
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'Back to products' }),
+    );
+
+    expect(store.getState().checkout.step).toBe(1);
+    expect(storage.data[CHECKOUT_STORAGE_KEY]).toBeUndefined();
+    await waitFor(() =>
+      expect(
+        get.mock.calls.filter(([url]) => url === '/api/products'),
+      ).toHaveLength(2),
+    );
+  });
+
+  it('closes the result view without asking for confirmation', async () => {
+    const { user, dialog, store } = await openSummary({
+      post: createPost('DECLINED'),
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await within(dialog).findByRole('heading', { name: 'Payment declined' });
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+
+    expect(screen.queryByText('Discard checkout?')).not.toBeInTheDocument();
+    expect(store.getState().checkout.step).toBe(1);
+  });
+
+  it('shows a pending payment and updates it when the status is checked again', async () => {
+    const api = createApi({ status: 'APPROVED' });
+    const { user, dialog } = await openSummary({
+      post: createPost('PENDING'),
+      api,
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment pending' }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'Check again in a moment',
+    );
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Check status' }),
+    );
+
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment approved' }),
+    ).toBeInTheDocument();
+    expect(api).toHaveBeenCalledWith('/api/transactions/tx-1', {
+      headers: expect.objectContaining({ 'X-Trace-Id': expect.any(String) }),
+    });
+  });
+
+  it('does not offer to retry when the payment could not be confirmed and lets the user check it', async () => {
+    const api = createApi({ status: 'DECLINED' });
+    const post = createPost(new AxiosError('Network Error', 'ERR_NETWORK'));
+    const { user, dialog } = await openSummary({ post, api });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+
+    expect(
+      await within(dialog).findByRole('heading', {
+        name: "We couldn't confirm your payment",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('button', { name: 'Try another card' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Check status' }),
+    );
+
+    expect(
+      await within(dialog).findByRole('heading', { name: 'Payment declined' }),
+    ).toBeInTheDocument();
+  });
+
+  it('stays unconfirmed when the status check cannot reach the server either', async () => {
+    const api = createApi({
+      status: new AxiosError('Network Error', 'ERR_NETWORK'),
+    });
+    const post = createPost(new AxiosError('Network Error', 'ERR_NETWORK'));
+    const { user, dialog } = await openSummary({ post, api });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'Check status' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: 'Check status' }),
+      ).toBeEnabled(),
+    );
+    expect(
+      within(dialog).getByRole('heading', {
+        name: "We couldn't confirm your payment",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      'a gateway failure',
+      httpError(502, { code: 'GATEWAY_ERROR' }),
+      3,
+      'unavailable',
+    ],
+    ['too many attempts', httpError(429), 3, 'Too many attempts'],
+    [
+      'an order already processed',
+      httpError(409, { code: 'INVALID_TRANSACTION_STATE' }),
+      4,
+      'already processed',
+    ],
+  ])('explains %s', async (_name, failure, section, message) => {
+    const post = createPost(failure);
+    const { user, dialog, store } = await openSummary({ post });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+
+    expect(
+      await within(dialog).findByText(new RegExp(message)),
+    ).toBeInTheDocument();
+    expect(store.getState().checkout.formSection).toBe(section);
+    expect(store.getState().checkout.transactionId).toBe('tx-1');
+  });
+
+  it('offers to go back to the product when the stock ran out, refreshing the catalog', async () => {
+    const post = createPost(httpError(409, { code: 'OUT_OF_STOCK' }));
+    const { user, dialog, store, get } = await openSummary({ post });
+
+    await user.click(within(dialog).getByRole('button', { name: /^Pay \$/ }));
+    await user.click(
+      await within(dialog).findByRole('button', { name: 'Back to product' }),
+    );
+
+    expect(store.getState().checkout.step).toBe(1);
+    await waitFor(() =>
+      expect(
+        get.mock.calls.filter(([url]) => url === '/api/products'),
+      ).toHaveLength(2),
+    );
+  });
+
+  it.each([
+    [
+      'a product that ran out of stock',
+      httpError(409, { code: 'OUT_OF_STOCK' }),
+      'Back to product',
+    ],
+    [
+      'a network failure',
+      new AxiosError('Network Error', 'ERR_NETWORK'),
+      'Retry',
+    ],
+  ])(
+    'handles a quote request that fails with %s',
+    async (_name, failure, action) => {
+      const user = userEvent.setup();
+      renderWithStore(<App />, createApi({ quote: failure }), memoryStorage());
+      const dialog = await openCheckout(user);
+
+      await goToCardStep(user, dialog);
+      await fillCard(user, dialog);
+      await waitFor(() =>
+        expect(within(dialog).getByRole('checkbox')).toBeEnabled(),
+      );
+      await user.click(within(dialog).getByRole('checkbox'));
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Continue' }),
+      );
+
+      expect(
+        await within(dialog).findByRole('button', { name: action }),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('button', { name: 'Pay' }),
+      ).toBeDisabled();
+    },
+  );
+
+  it('asks to re-enter the card after a reload on the summary', async () => {
+    const storage = memoryStorage({
+      [CHECKOUT_STORAGE_KEY]: JSON.stringify({
+        step: 2,
+        formSection: 4,
+        productId: 'p-1',
+        quantity: 1,
+        traceId: 'trace-1',
+        reference: 'ref-1',
+        cardLast4: '4242',
+        cardBrand: 'VISA',
+        customer: {
+          documentType: 'CC',
+          documentNumber: '1020304050',
+          fullName: 'Jane Doe',
+          email: 'jane@example.com',
+          phone: '3001112233',
+        },
+        shipping: {
+          address: 'Calle 1 # 2-3',
+          city: 'Bogota',
+          region: 'Cundinamarca',
+          postalCode: '110111',
+        },
+      }),
+    });
+    const user = userEvent.setup();
+    renderWithStore(<App />, createApi(), storage, createPost());
+
+    const dialog = await screen.findByRole('dialog', { name: /checkout/i });
+
+    expect(
+      await within(dialog).findByText('Re-enter your card to pay.'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: /^Pay \$/ }),
+    ).toBeDisabled();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Enter card' }),
+    );
+    expect(within(dialog).getByLabelText('Card number')).toBeInTheDocument();
+  });
+
+  describe.each([
+    ['APPROVED', 'Payment approved'],
+    ['DECLINED', 'Payment declined'],
+    ['SOMETHING_NEW', "We couldn't confirm your payment"],
+  ])(
+    'after a reload during the payment (gateway status %s)',
+    (status, title) => {
+      it('asks the backend for the transaction and shows its result', async () => {
+        const storage = memoryStorage({
+          [CHECKOUT_STORAGE_KEY]: JSON.stringify({
+            step: 2,
+            formSection: 4,
+            productId: 'p-1',
+            quantity: 1,
+            traceId: 'trace-1',
+            reference: 'ref-1',
+            transactionId: 'tx-1',
+            paymentAttempted: true,
+            cardLast4: '4242',
+            cardBrand: 'VISA',
+          }),
+        });
+        const api = createApi({ status });
+        renderWithStore(<App />, api, storage, createPost());
+
+        const dialog = await screen.findByRole('dialog', {
+          name: new RegExp(title, 'i'),
+        });
+
+        expect(
+          within(dialog).getByRole('heading', { name: title }),
+        ).toBeInTheDocument();
+        expect(api).toHaveBeenCalledWith('/api/transactions/tx-1', {
+          headers: { 'X-Trace-Id': 'trace-1' },
+        });
+        expect(within(dialog).getByText('ref-1')).toBeInTheDocument();
+        expect(within(dialog).getByText('trace-1')).toBeInTheDocument();
+      });
+    },
+  );
 });

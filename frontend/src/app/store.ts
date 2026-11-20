@@ -5,12 +5,14 @@ import {
   saveCheckoutState,
   StorageLike,
 } from '@/features/checkout/state/checkout-storage';
+import paymentReducer from '@/features/checkout/state/payment-slice';
 import productsReducer from '@/features/products/state/products-slice';
 import { ThunkExtra } from './thunk-extra';
 
 const rootReducer = combineReducers({
   products: productsReducer,
   checkout: checkoutReducer,
+  payment: paymentReducer,
 });
 
 export function setupStore(

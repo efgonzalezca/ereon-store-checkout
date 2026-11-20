@@ -23,13 +23,10 @@ export interface ShippingForm {
   postalCode: string;
 }
 
-/** 1 = no checkout in progress, 2 = checkout modal open. */
 export type CheckoutStep = 1 | 2;
 
-/** Data steps of the modal: 1 personal info, 2 shipping, 3 card. */
 export type DataSection = 1 | 2 | 3;
 
-/** Modal steps: the data steps plus 4, the summary. */
 export type CheckoutSection = DataSection | 4;
 
 export interface CheckoutState {
@@ -38,6 +35,9 @@ export interface CheckoutState {
   productId: string | null;
   quantity: number;
   traceId: string | null;
+  reference: string | null;
+  transactionId: string | null;
+  paymentAttempted: boolean;
   customer: CustomerForm;
   shipping: ShippingForm;
   installments: number;

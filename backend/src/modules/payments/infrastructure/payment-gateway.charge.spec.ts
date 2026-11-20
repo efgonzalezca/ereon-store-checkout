@@ -6,7 +6,7 @@ import { compactDecrypt } from 'jose';
 import { Logger } from 'nestjs-pino';
 import { of, throwError } from 'rxjs';
 import { EnvironmentVariables } from '../../../config/env.validation';
-import { GatewayError } from '../../../shared/rop/errors';
+import { CardRejectedError, GatewayError } from '../../../shared/rop/errors';
 import { Err, Ok } from '../../../shared/rop/result';
 import { ChargeRequest, ChargeResult } from '../domain/payment-gateway.port';
 import { PaymentGatewayAdapter } from './payment-gateway.adapter';
@@ -260,12 +260,17 @@ describe('PaymentGatewayAdapter.charge', () => {
     }
   });
 
-  it('returns GatewayError when the gateway rejects the charge', async () => {
+  it('returns GatewayError and logs the step and the rejected fields when the charge is rejected', async () => {
     const post = jest.fn((url: string) =>
       url.endsWith('/v1/tokens/cards')
         ? of(tokenResponse)
         : throwError(() =>
-            httpError(422, { error: { type: 'INPUT_VALIDATION_ERROR' } }),
+            httpError(422, {
+              error: {
+                type: 'INPUT_VALIDATION_ERROR',
+                messages: { acceptance_token: ['Token inválido'] },
+              },
+            }),
           ),
     );
     const { adapter, warn } = build({ post });
@@ -274,9 +279,48 @@ describe('PaymentGatewayAdapter.charge', () => {
 
     expect((result as Err<GatewayError>).error).toBeInstanceOf(GatewayError);
     expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ reason: 'ERR_BAD_REQUEST:422' }),
+      expect.objectContaining({
+        action: 'charge_failed',
+        step: 'create_transaction',
+        reason: 'ERR_BAD_REQUEST:422',
+        gatewayErrorType: 'INPUT_VALIDATION_ERROR',
+        gatewayErrorFields: ['acceptance_token'],
+      }),
       expect.any(String),
     );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('Token inválido');
+  });
+
+  it('returns CardRejectedError when the gateway rejects the card during tokenization', async () => {
+    const post = jest.fn().mockReturnValue(
+      throwError(() =>
+        httpError(422, {
+          error: {
+            type: 'INPUT_VALIDATION_ERROR',
+            messages: { number: ['El número de tarjeta no es aceptado'] },
+          },
+        }),
+      ),
+    );
+    const { adapter, warn } = build({ post });
+
+    const result = await adapter.charge(request);
+
+    expect((result as Err<CardRejectedError>).error).toBeInstanceOf(
+      CardRejectedError,
+    );
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'card_rejected',
+        step: 'tokenize_card',
+        gatewayErrorFields: ['number'],
+      }),
+      expect.any(String),
+    );
+    const exposed = JSON.stringify(warn.mock.calls);
+    expect(exposed).not.toContain('4242424242424242');
+    expect(exposed).not.toContain('no es aceptado');
   });
 
   it.each([

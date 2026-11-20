@@ -5,7 +5,7 @@ import { isAxiosError } from 'axios';
 import { Logger } from 'nestjs-pino';
 import { firstValueFrom } from 'rxjs';
 import { EnvironmentVariables } from '../../../config/env.validation';
-import { GatewayError } from '../../../shared/rop/errors';
+import { CardRejectedError, GatewayError } from '../../../shared/rop/errors';
 import { err, ok, Result } from '../../../shared/rop/result';
 import {
   AcceptanceTokens,
@@ -58,6 +58,12 @@ const sleep = (ms: number): Promise<void> =>
 
 class InvalidGatewayResponse extends Error {}
 
+type ChargeStep = 'tokenize_card' | 'create_transaction' | 'poll';
+
+interface GatewayErrorDetails {
+  error?: { type?: unknown; messages?: unknown };
+}
+
 @Injectable()
 export class PaymentGatewayAdapter implements IPaymentGatewayPort {
   constructor(
@@ -103,14 +109,24 @@ export class PaymentGatewayAdapter implements IPaymentGatewayPort {
 
   async charge(
     request: ChargeRequest,
-  ): Promise<Result<ChargeResult, GatewayError>> {
+  ): Promise<Result<ChargeResult, GatewayError | CardRejectedError>> {
+    let step: ChargeStep = 'tokenize_card';
     try {
       const cardToken = await this.tokenizeCard(request);
+      step = 'create_transaction';
       const created = await this.createTransaction(request, cardToken);
-      const finalResult = await this.pollUntilFinal(created);
-      return ok(finalResult);
+      step = 'poll';
+      return ok(await this.pollUntilFinal(created));
     } catch (error) {
-      return this.fail('charge_failed', this.reasonOf(error));
+      const details = { step, ...this.describeGatewayError(error) };
+      if (step === 'tokenize_card' && this.isRejection(error)) {
+        this.logger.warn(
+          { action: 'card_rejected', reason: this.reasonOf(error), ...details },
+          'Payment gateway rejected the card',
+        );
+        return err(new CardRejectedError('Card was rejected'));
+      }
+      return this.fail('charge_failed', this.reasonOf(error), details);
     }
   }
 
@@ -233,8 +249,30 @@ export class PaymentGatewayAdapter implements IPaymentGatewayPort {
       : 'unexpected';
   }
 
-  private fail(action: string, reason: string): Result<never, GatewayError> {
-    this.logger.warn({ action, reason }, 'Payment gateway request failed');
+  private isRejection(error: unknown): boolean {
+    return isAxiosError(error) && error.response?.status === 422;
+  }
+
+  private describeGatewayError(error: unknown): Record<string, unknown> {
+    if (!isAxiosError<GatewayErrorDetails>(error)) return {};
+    const detail = error.response?.data?.error;
+    const messages = detail?.messages;
+    return {
+      gatewayErrorType: typeof detail?.type === 'string' ? detail.type : null,
+      gatewayErrorFields:
+        messages && typeof messages === 'object' ? Object.keys(messages) : [],
+    };
+  }
+
+  private fail(
+    action: string,
+    reason: string,
+    details: Record<string, unknown> = {},
+  ): Result<never, GatewayError> {
+    this.logger.warn(
+      { action, reason, ...details },
+      'Payment gateway request failed',
+    );
     return err(new GatewayError('Payment gateway is unavailable'));
   }
 }

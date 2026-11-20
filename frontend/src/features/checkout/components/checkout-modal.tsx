@@ -3,13 +3,27 @@ import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { productSelected } from '@/features/products/state/products-slice';
 import { Product } from '@/features/products/state/product.types';
 import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
+import { fetchProducts } from '@/features/products/state/products-slice';
 import { Modal } from '@/shared/ui/modal';
 import { CardSection } from './steps/card-section';
+import { FinalStatusView } from './final-status-view';
+import { PaymentAlert } from './payment-alert';
+import { PaymentBackdrop } from './payment-backdrop';
+import {
+  checkStatus,
+  fetchQuote,
+  selectQuote,
+  selectSubmission,
+  submitPayment,
+} from '../state/payment-slice';
+import { outcomeOf, submissionMessage } from '../state/payment-errors';
 import { useCardSession } from '../state/card-session';
 import { FormApi } from '../form/checkout-form';
 import {
+  attemptClosed,
   checkoutCancelled,
   customerChanged,
+  paymentAborted,
   detailsSubmitted,
   installmentsChanged,
   sectionChanged,
@@ -26,7 +40,6 @@ import { CheckoutStepper } from './checkout-stepper';
 import { CustomerSection } from './steps/customer-section';
 import { OrderSummary } from './order-summary';
 import { ShippingSection } from './steps/shipping-section';
-import { SummarySection } from './steps/summary-section';
 import {
   errorMessage,
   FieldName,
@@ -37,6 +50,8 @@ import {
 } from '../form/validate-checkout';
 import { detectCardBrand } from '../form/validators/card.validators';
 import './checkout.css';
+
+const CARD_CLEARED_NOTE = 'For your security, your card details were cleared.';
 
 const CUSTOMER_FIELDS: readonly FieldName[] = [
   'documentType',
@@ -55,8 +70,16 @@ const SHIPPING_FIELDS: readonly FieldName[] = [
 export function CheckoutModal({ product }: { product: Product }) {
   const dispatch = useAppDispatch();
   const checkout = useAppSelector(selectCheckout);
-  const { card, setCardField, tokens, tokensStatus, loadTokens } =
-    useCardSession();
+  const {
+    card,
+    setCardField,
+    tokens,
+    tokensStatus,
+    loadTokens,
+    clearSensitive,
+  } = useCardSession();
+  const quote = useAppSelector(selectQuote);
+  const submission = useAppSelector(selectSubmission);
   const formRef = useRef<HTMLFormElement>(null);
   const [touched, setTouched] = useState<ReadonlySet<FieldName>>(new Set());
   const [attempted, setAttempted] = useState<ReadonlySet<DataSection>>(
@@ -67,12 +90,20 @@ export function CheckoutModal({ product }: { product: Product }) {
   const [isConfirmingClose, setIsConfirmingClose] = useState(false);
 
   useEffect(() => {
-    loadTokens();
-  }, [loadTokens]);
+    if (tokensStatus === 'idle') loadTokens();
+  }, [tokensStatus, loadTokens]);
 
   const section = checkout.formSection;
   const isFirst = section === 1;
   const isLast = section === 3;
+
+  useEffect(() => {
+    if (section === 4) {
+      void dispatch(
+        fetchQuote({ productId: product.id, quantity: checkout.quantity }),
+      );
+    }
+  }, [dispatch, section, product.id, checkout.quantity]);
 
   useEffect(() => {
     const pending = pendingFocus.current;
@@ -134,6 +165,65 @@ export function CheckoutModal({ product }: { product: Product }) {
     dispatch(productSelected(product.id));
   };
 
+  const leaveForProduct = () => {
+    discard();
+    void dispatch(fetchProducts());
+  };
+
+  const leaveToCatalog = () => {
+    dispatch(checkoutCancelled());
+    void dispatch(fetchProducts());
+  };
+
+  const showResult =
+    checkout.paymentAttempted && submission.status !== 'submitting';
+  const outcome = outcomeOf(submission);
+
+  useEffect(() => {
+    if (checkout.paymentAttempted && submission.status === 'idle') {
+      void dispatch(checkStatus());
+    }
+  }, [dispatch, checkout.paymentAttempted, submission.status]);
+
+  const handleTryAnotherCard = () => {
+    if (submission.result) {
+      dispatch(attemptClosed({ reference: crypto.randomUUID() }));
+    } else {
+      dispatch(paymentAborted({ toCard: true }));
+    }
+  };
+
+  const handlePay = async () => {
+    if (!tokens) return;
+    const [expMonth, expYear] = card.expiry.split('/');
+    await dispatch(
+      submitPayment({
+        card: {
+          number: card.cardNumber.replace(/\D/g, ''),
+          cvc: card.cvc,
+          expMonth,
+          expYear,
+          holder: card.cardHolder.trim(),
+        },
+        acceptanceToken: tokens.acceptanceToken,
+        personalAuthToken: tokens.personalAuthToken,
+      }),
+    );
+    clearSensitive();
+    setAccepted(false);
+    setTouched(new Set());
+    setAttempted(new Set());
+  };
+
+  const alertMessage = submissionMessage(submission);
+
+  useEffect(() => {
+    if (alertMessage && section === 3) {
+      const control = formRef.current?.elements.namedItem('cardNumber');
+      if (control instanceof HTMLElement) control.focus();
+    }
+  }, [alertMessage, section]);
+
   const requestClose = () => (hasData ? setIsConfirmingClose(true) : discard());
 
   const goTo = (target: CheckoutSection) => {
@@ -176,6 +266,28 @@ export function CheckoutModal({ product }: { product: Product }) {
     goTo(isLast ? 4 : ((section + 1) as CheckoutSection));
   };
 
+  if (showResult) {
+    return (
+      <Modal
+        labelledBy="checkout-title"
+        onClose={leaveToCatalog}
+        onCloseRequest={leaveToCatalog}
+      >
+        <FinalStatusView
+          outcome={outcome}
+          reference={checkout.reference}
+          traceId={checkout.traceId}
+          isChecking={
+            submission.status === 'checking' || submission.status === 'idle'
+          }
+          onBackToProducts={leaveToCatalog}
+          onTryAnotherCard={handleTryAnotherCard}
+          onCheckStatus={() => void dispatch(checkStatus())}
+        />
+      </Modal>
+    );
+  }
+
   return (
     <Modal
       labelledBy="checkout-title"
@@ -201,14 +313,40 @@ export function CheckoutModal({ product }: { product: Product }) {
               onGo={goTo}
             />
 
+            {alertMessage && (section === 3 || section === 4) && (
+              <PaymentAlert
+                message={alertMessage}
+                note={CARD_CLEARED_NOTE}
+                action={
+                  submission.error === 'out_of_stock'
+                    ? { label: 'Back to product', onClick: leaveForProduct }
+                    : undefined
+                }
+              />
+            )}
             {section === 1 && <CustomerSection form={form} />}
             {section === 2 && <ShippingSection form={form} />}
             {section === 3 && <CardSection form={form} />}
             {section === 4 && (
-              <SummarySection
+              <PaymentBackdrop
                 product={product}
                 checkout={checkout}
+                quote={quote}
+                submission={submission}
+                canPay={canOpenSummary && tokensStatus === 'ready'}
                 onEdit={goTo}
+                onEditOrder={requestClose}
+                onBack={() => goTo(3)}
+                onPay={() => void handlePay()}
+                onRetryQuote={() =>
+                  void dispatch(
+                    fetchQuote({
+                      productId: product.id,
+                      quantity: checkout.quantity,
+                    }),
+                  )
+                }
+                onLeave={leaveForProduct}
               />
             )}
 
@@ -267,19 +405,19 @@ export function CheckoutModal({ product }: { product: Product }) {
               </div>
             )}
 
-            <div className="checkout__actions">
-              <button
-                type="button"
-                className="button button--secondary"
-                onClick={
-                  isFirst
-                    ? requestClose
-                    : () => goTo((section - 1) as CheckoutSection)
-                }
-              >
-                {isFirst ? 'Cancel' : 'Back'}
-              </button>
-              {section !== 4 && (
+            {section !== 4 && (
+              <div className="checkout__actions">
+                <button
+                  type="button"
+                  className="button button--secondary"
+                  onClick={
+                    isFirst
+                      ? requestClose
+                      : () => goTo((section - 1) as CheckoutSection)
+                  }
+                >
+                  {isFirst ? 'Cancel' : 'Back'}
+                </button>
                 <button
                   type="submit"
                   className="button button--primary"
@@ -287,8 +425,8 @@ export function CheckoutModal({ product }: { product: Product }) {
                 >
                   {isLast ? 'Continue' : 'Next'}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {section !== 4 && (
