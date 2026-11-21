@@ -4,6 +4,8 @@ services:
       - "${DB_PORT}:5432"
 
   backend:
+    build:
+      target: development
     command: npm run start:dev
     ports:
       - "${PORT}:${PORT}"
