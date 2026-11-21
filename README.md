@@ -95,7 +95,7 @@ frontend/src/
 
 **Payment summary.** A two-layer backdrop: the product on the back layer and, on the elevated front layer, the cost breakdown calculated by the backend (`GET /api/quote`), the delivery address, the card and the pay button. "Pay" creates the transaction and pays it in one click, and the button is disabled while it processes. Errors that allow another try (stock gone, too many attempts, gateway unavailable) are shown above the form with what the user can do next.
 
-**Result view.** Once a payment is attempted, the modal shows its outcome, always with the order reference. The cases the user can reach are:
+**Result view.** Once a payment is attempted, the modal shows its outcome with the order reference and the trace id: the reference identifies the purchase in the database and at the gateway, and the trace id lets a developer follow every log line of that checkout, which matters most when a payment fails or cannot be confirmed. The cases the user can reach are:
 
 | Result | When | Actions |
 | :--- | :--- | :--- |
@@ -565,12 +565,50 @@ The payment gateway sandbox documents two test cards. Use any future expiry date
 | `4242 4242 4242 4242` | Visa | `APPROVED` |
 | `4111 1111 1111 1111` | Visa | `DECLINED` |
 
-Any other card number is not accepted by the sandbox: the API answers `422` with `CARD_REJECTED` and the checkout asks the user to enter another card.
+The checkout identifies the brand from the first digits while the number is typed and shows its logo:
 
-The checkout detects Visa and Mastercard while the number is typed (logo and validation), but the sandbox has no Mastercard test card: Mastercard numbers pass the checkout validation and are then rejected by the gateway, so only the two cards above can complete a payment.
+| Brand | The number starts with | In the checkout | In the sandbox |
+| :--- | :--- | :--- | :--- |
+| Visa | `4` | Accepted | Only the two cards above work; any other number is rejected |
+| Mastercard | `51` to `55`, or `2221` to `2720` | Accepted | There is no test card, so every number is rejected |
+| Any other brand | Any other prefix | Blocked before reaching the API | Not applicable |
+
+Besides the brand, the checkout requires 13 to 19 digits (spaces and hyphens are allowed) that pass the Luhn check, an expiry in `MM/YY` format that is not in the past, and a 3-digit CVC. A number that the sandbox rejects makes the API answer `422` with `CARD_REJECTED`, and the checkout asks for another card.
 
 ---
 
-## 8. AI assistants usage
+## 8. AI-Assisted Development Workflow
 
-_Pending._
+I used **Claude** and **Claude Code** (Anthropic) as assistants across two phases, keeping every scope, architecture and review decision human-led.
+
+### 1. Requirements and planning (before writing code)
+
+* **Requirements refinement (my own skill):** Using a PRD skill I had already built before this challenge, I refined the requirements document before writing any code. Starting from my initial proposal, the skill asked clarifying questions to surface edge cases and gaps, structured the scope into **user stories and actionable tasks** (for example, the 5-step flow: Product, Card and delivery, Summary, Status, and back to the product with the stock updated) and helped organize the technical descriptions and the diagrams.
+
+* **Manual study of the payment gateway:** I read the payment gateway documentation myself, built the Postman collection, tried several sandbox cases (approved, declined and rejected card numbers) and decided what was in and out of scope. Credentials and API keys were kept out of the repository and injected through environment variables.
+
+* **Architecture (human-led):** I defined the overall design myself:
+  - **Hexagonal architecture (ports and adapters)** for the NestJS backend: domain, application use cases and infrastructure adapters.
+  - **Railway Oriented Programming** for composing use cases (success and failure tracks).
+  - **Redux (Flux)** for the React app state, with a typed store and persistence of the in-progress checkout so it survives a page refresh.
+  - The **data model** (`products`, `customers`, `transactions` and `deliveries`), described in the requirements and refined as the work progressed.
+
+### 2. Incremental implementation (Claude Code)
+
+With the requirements and boundaries clear, I defined the folder structure and worked with **Claude Code**, paired with community NestJS, React and Redux Toolkit skills that I already had and had used before, to write code faster, identify improvements and write the tests (Jest, Supertest and React Testing Library, above 80% coverage in both projects).
+
+Every piece of work followed the same cycle:
+
+1. **Plan:** Claude proposed a short plan with the decisions to make (for example, how to model the payment lifecycle `PENDING`, `APPROVED`, `DECLINED`, `ERROR` and `VOIDED`, how to validate card numbers and detect the brand, or how to persist the in-progress checkout without storing card data). I confirmed or changed them before any code was written.
+2. **Scoped execution:** the work was limited to that task. Anything outside it was only done when I asked for it.
+3. **Verification:** Claude reported the modified files, the test results, the coverage and a proposed commit message.
+4. **Review and version control:** I reviewed the result, verified the behavior in the browser against the sandbox, and made every commit, pull request and merge myself (feature branches merged into `develop`).
+
+The same process was used to restructure this README, section by section, with my approval of each one. For the deployment, I created the cloud infrastructure and ran the steps myself, using the assistant to define the requirements of the production image (such as trusting the database TLS certificate) and the scripts that migrate and seed the production database.
+
+### 3. What the AI did not do
+
+- **Architecture and folder structure** were defined by me.
+- **Scope decisions and the interpretation of the requirements** were mine, including reading the gateway documentation.
+- **All commits, pull requests and merges** were made by me after reviewing each change.
+- **Security requirements** (no card data persisted, security headers, rate limiting, secrets outside the repository, HTTPS) were set in the requirements. The assistant implemented and cross-checked them, and I verified the result, including a security-headers scan of the deployed site.
