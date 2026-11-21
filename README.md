@@ -10,8 +10,8 @@ Mobile-first e-commerce checkout SPA backed by a REST API. A customer buys a pro
 
 | | URL |
 | :--- | :--- |
-| Frontend app | _Pending_ |
-| Backend API | _Pending_ |
+| Frontend app | [https://store.ereon.dev](https://store.ereon.dev) |
+| Backend API | [https://store-api.ereon.dev/api/health](https://store-api.ereon.dev/api/health) (health check) |
 | API docs | [Postman collection](docs/postman_collection.json) |
 
 ---
@@ -51,6 +51,19 @@ backend/src/
 
 A global `GlobalExceptionFilter` handles only unexpected errors: it logs them and answers `500` without exposing stack traces.
 
+**Key decisions.**
+
+| Decision | Why |
+| :--- | :--- |
+| Payment split in two endpoints: `POST /api/transactions` only writes to the database, and `POST /api/transactions/:id/pay` receives the card and calls the gateway | The card never travels with the order creation and is never stored or logged. It is encrypted (JWE) with the gateway's public key and sent once, from the backend. |
+| Idempotent creation by `reference` | The client generates a UUID per attempt. Repeating the same request returns the same transaction, and reusing a reference with different data answers `422`, so retries and double clicks cannot create duplicates. |
+| Amounts calculated by the backend | The client sends the product and quantity, never prices. `GET /api/quote` returns the breakdown, fees come from configuration and money is handled as integer cents. |
+| The gateway is never called inside a database transaction | A charge can take seconds. The ACID transaction opens only after `APPROVED` and groups the conditional stock update (`WHERE stock >= qty`), the transaction status and the delivery in one commit. |
+| Stock checked at quote, creation and right before the charge | A buyer who loses the race gets `409` before being charged, in most cases. The remaining window is documented below. |
+| Gateway behind a port | The domain depends on a payment port and an adapter implements it, so the provider can change without touching the use cases. The integrity signature is computed on the server and the keys never reach the client. |
+| A rejected card is not a gateway outage | A card the gateway refuses answers `422 CARD_REJECTED` (the user can fix it); network or provider failures answer `502`. The adapter logs the failing step and the rejected field names, never their values. |
+| Short polling after the charge | The backend polls the gateway 4 times, 1.5 s apart. If the result is still pending, the transaction is stored as `PENDING` instead of holding the request open. |
+
 **Known limitations of the payment flow.** Two situations can happen that the API does not resolve on its own:
 
 - **A payment that stays `PENDING`.** After the gateway accepts a charge, the backend polls it for a few seconds. In the sandbox the final result sometimes arrives later than that window, so the transaction is stored as `PENDING` with its gateway id and the API answers `200` with that status. The stock is not touched and no delivery is created, even if the gateway later approves or declines the payment. Reconciling a `PENDING` transaction against the gateway is not implemented, and neither is paying it again (the API answers `409`).
@@ -76,26 +89,272 @@ frontend/src/
 └── test/                 # Jest setup and test helpers
 ```
 
-How the pieces fit together:
+**Catalog and product detail.** The catalog is a responsive grid of product cards. Choosing one opens its detail in a modal, so the user keeps the context of the catalog behind it. The modal is a native `<dialog>` (focus trapping and `Esc` out of the box) and it only closes with its button, so a stray tap outside does not discard the selection. The quantity is picked from a list that goes from 1 up to the available stock, and the pay button is disabled when a product is out of stock.
 
-- **Catalog and product detail.** The catalog is a responsive grid of product cards. Choosing one opens its detail in a modal, so the user keeps the context of the catalog behind it. The modal is a native `<dialog>`, which provides focus trapping and `Esc` handling out of the box, and it is closed with its close button; a stray tap outside it does not discard the selection. Quantity is picked from a short list that goes from 1 up to the available stock, so no input validation is needed, and the pay button is disabled when a product is out of stock.
-- **Data access.** The axios client is injected into the store as the thunk extra argument. Only `main.tsx` reads the environment, which lets tests run against a fake client without mocking modules.
-- **Layout.** Designed mobile first for a 375×667 viewport using Flexbox and Grid, without hiding overflow. From 768 px the modal places the image beside the product details. Colors and spacing are CSS variables in `index.css`.
-- **Checkout flow.** "Pay with credit card" starts a checkout: the product detail closes and a modal opens with a four-step progress indicator: personal info, shipping info, card info and summary. Steps can be visited in any order; a check mark appears only on the complete ones, and the summary opens once the first three are complete. "Next" validates the current step, and the card step also holds the terms checkbox. A compact order summary stays visible beside (desktop) or above (mobile) the form. The summary is a two-layer backdrop: the product on the back layer and, on the elevated front layer, the breakdown calculated by the backend (`GET /api/quote`), the delivery address, the card and the pay button. "Pay" creates the transaction (`POST /api/transactions`) and pays it (`POST /api/transactions/:id/pay`) in one click; the button is disabled while it processes. The card and the acceptance tokens are cleared from memory after every attempt, so the user returns to the card step with fresh tokens. Once the payment is attempted, the modal shows a result view: approved, declined, failed, voided, card not accepted, pending, or unconfirmed when the connection fails and the outcome is unknown. Every result shows the transaction reference and the trace id. "Back to products" clears the checkout and reloads the catalog to show the updated stock; after a rejection "Try another card" returns to the card step (a declined, failed or voided payment starts a new reference); a pending or unconfirmed payment offers "Check status", which reads `GET /api/transactions/:id` and does not reconcile with the gateway. A reload during the result view asks the backend for the transaction again. Closing the modal after typing asks for confirmation. There are no routes: the state lives in the store, so the flow survives a reload. Only non-sensitive data is saved to `localStorage` (modal step, product, quantity, customer and shipping data, installments, last four digits, brand, trace id, reference, transaction id and whether a payment was attempted). The card number, expiry, CVC, holder and acceptance tokens stay in a React context in memory, so after a reload the user re-enters the card and fresh single-use tokens are requested. Every checkout request carries an `X-Trace-Id` generated when the checkout starts.
-- **Validators.** Card and shipping validation lives in pure functions that return `null` when the value is valid or an error code otherwise, so the UI decides the message. Card numbers must pass the Luhn check and be Visa or Mastercard; expiry is `MM/YY` and must not be in the past; installments go from 1 to 36.
-- **Prices and images.** The API returns prices in cents and the UI formats them as Colombian pesos. Product images are square 640×640 `.webp` files (under 25 kB each) in `frontend/public/images/products/`, served by the same origin as the app; the database only stores their relative path.
+**Checkout wizard.** "Pay with credit card" opens a modal with a four-step progress indicator: personal info, shipping info, card info and summary. Steps can be visited in any order, a check mark appears only on the valid ones and the summary opens once the first three are complete. A compact order summary stays beside the form on desktop and above it on mobile. Closing the modal after typing asks for confirmation.
+
+**Payment summary.** A two-layer backdrop: the product on the back layer and, on the elevated front layer, the cost breakdown calculated by the backend (`GET /api/quote`), the delivery address, the card and the pay button. "Pay" creates the transaction and pays it in one click, and the button is disabled while it processes. Errors that allow another try (stock gone, too many attempts, gateway unavailable) are shown above the form with what the user can do next.
+
+**Result view.** Once a payment is attempted, the modal shows its outcome, always with the order reference. The cases the user can reach are:
+
+| Result | When | Actions |
+| :--- | :--- | :--- |
+| Payment approved | The bank approved the payment | Back to products |
+| Payment declined | The bank declined it; nothing was charged | Try another card, Back to products |
+| Payment failed | The gateway could not complete the payment | Try another card, Back to products |
+| Payment voided | The payment was voided | Try another card, Back to products |
+| Card not accepted | The gateway refused the card number | Try another card, Back to products |
+| Payment pending | The gateway gave no final answer within the polling window | Check status, Back to products |
+| Could not confirm the payment | The connection dropped or timed out, so it may or may not have been charged | Check status, Back to products |
+
+"Back to products" clears the checkout and reloads the catalog with the updated stock. "Try another card" returns to the card step; after a declined, failed or voided payment it also starts a new reference. "Check status" reads `GET /api/transactions/:id` and does not reconcile with the gateway. An unconfirmed payment never offers a new card, to avoid charging twice.
+
+**State and persistence.** There are no routes: the flow lives in the store, so it survives a reload. Only non-sensitive data goes to `localStorage` (step, product, quantity, customer and shipping data, installments, last four digits, brand, reference, transaction id and trace id). The card number, expiry, CVC, holder and the acceptance tokens stay in a React context in memory and are cleared after every attempt. After a reload the user re-enters the card and fresh single-use tokens are requested; a reload on the result view asks the backend for the transaction again. Every checkout request carries an `X-Trace-Id`.
+
+**Validation.** Pure functions return `null` when the value is valid or an error code otherwise, so the UI decides the message. Card numbers must pass the Luhn check and be Visa or Mastercard, expiry is `MM/YY` and cannot be in the past, and installments go from 1 to 36.
+
+**Data access, layout and assets.** The axios client is injected into the store as the thunk extra argument, so tests run against a fake client without mocking modules. The layout is mobile first for a 375×667 viewport with Flexbox and Grid and no hidden overflow; from 768 px the product modal places the image beside the details. Prices arrive in cents and are shown as Colombian pesos. Product images are square 640×640 `.webp` files under 25 kB, served by the same origin as the app.
+
+### Purchase flow
+
+A purchase goes through five sequential steps. Each one is collapsed; open the one you need.
+
+<details>
+<summary><strong>1. Product page</strong>: the catalog is loaded and a checkout starts</summary>
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant BE as Backend
+    participant DB as PostgreSQL
+
+    User->>FE: Opens the store
+    FE->>BE: GET /api/products
+    BE->>DB: Reads the products
+    DB-->>BE: Products and stock
+    BE-->>FE: 200 OK
+    User->>FE: Picks a quantity and "Pay with credit card"
+    FE->>FE: Generates the trace id and the order reference
+```
+
+</details>
+
+<details>
+<summary><strong>2. Customer, shipping and card</strong>: data is validated and the card stays in memory</summary>
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant BE as Backend
+    participant GW as Payment gateway
+
+    FE->>BE: GET /api/payments/acceptance-tokens
+    BE->>GW: Merchant info
+    GW-->>BE: Two single-use tokens and their permalinks
+    BE-->>FE: 200 OK
+    User->>FE: Fills customer, shipping and card, accepts the terms
+    FE->>FE: Validates every field (Luhn, brand, expiry, CVC)
+    FE->>FE: localStorage: step, form data, last four digits, reference
+    FE->>FE: Memory only: card data and acceptance tokens
+```
+
+</details>
+
+<details>
+<summary><strong>3. Payment summary</strong>: the backend quotes the order</summary>
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant BE as Backend
+    participant DB as PostgreSQL
+
+    FE->>BE: GET /api/quote?productId&quantity
+    BE->>DB: Reads the product and its stock
+    alt Enough stock
+        BE-->>FE: 200 OK (product, base fee, delivery fee and total)
+        FE-->>User: Backdrop with the breakdown and the pay button
+    else Out of stock
+        BE-->>FE: 409 Conflict
+        FE-->>User: Offers to go back to the product
+    end
+    Note over FE: After a reload the card is gone from memory,<br/>so the user is asked to enter it again
+```
+
+</details>
+
+<details>
+<summary><strong>4. Payment</strong>: the transaction is created and charged</summary>
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant BE as Backend
+    participant DB as PostgreSQL
+    participant GW as Payment gateway
+
+    User->>FE: Clicks "Pay" (the button is disabled)
+    FE->>BE: POST /api/transactions
+    BE->>DB: Checks stock, upserts the customer, calculates the amounts
+    BE->>DB: Inserts the transaction as PENDING (the same reference returns the same one)
+    BE-->>FE: 201 Created
+    FE->>BE: POST /api/transactions/:id/pay (card, shipping, tokens)
+    BE->>DB: The transaction must be PENDING without gateway id, otherwise 409
+    BE->>DB: Checks the stock again, otherwise 409 before charging
+
+    Note over BE,GW: Gateway calls happen outside any database transaction
+    BE->>GW: Tokenization public key
+    BE->>BE: Encrypts the card (JWE)
+    BE->>GW: Card tokenization
+    alt Card rejected
+        BE-->>FE: 422 CARD_REJECTED
+    else Card accepted
+        BE->>BE: Signs the charge (SHA-256 with the integrity key)
+        BE->>GW: Creates the transaction
+        loop Up to 4 times, 1.5 s apart
+            BE->>GW: Reads the transaction status
+        end
+    end
+
+    alt APPROVED
+        BE->>DB: In one database transaction: conditional stock update, status APPROVED, delivery
+        Note right of DB: If the stock is gone, rollback and 409
+        BE-->>FE: 200 OK (APPROVED)
+    else DECLINED, ERROR, VOIDED or still PENDING
+        BE->>DB: Stores the status and the gateway id, stock untouched
+        BE-->>FE: 200 OK (that status)
+    end
+
+    FE->>FE: Clears the card and the tokens
+    FE-->>User: Result view
+```
+
+</details>
+
+<details>
+<summary><strong>5. Result and return</strong>: check the status and go back to the catalog</summary>
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as Frontend
+    participant BE as Backend
+    participant DB as PostgreSQL
+
+    opt Pending or unconfirmed payment
+        User->>FE: "Check status"
+        FE->>BE: GET /api/transactions/:id
+        BE->>DB: Reads the transaction
+        BE-->>FE: 200 OK (current status)
+    end
+    User->>FE: "Back to products"
+    FE->>FE: Clears the checkout and the localStorage
+    FE->>BE: GET /api/products
+    BE-->>FE: 200 OK (updated stock)
+    FE-->>User: Catalog with the stock discounted
+```
+
+</details>
 
 ---
 
 ### Infrastructure
 
-_Pending._
+![Infrastructure architecture](docs/infrastructure.jpg)
+
+Traffic reaches both apps through Cloudflare DNS over HTTPS. The frontend is a static build served by CloudFront from a private S3 bucket. The API is a container image stored in ECR and run on ECS Fargate behind an Application Load Balancer, with PostgreSQL on RDS. Security groups chain the layers so each one only accepts traffic from the previous one (`ereon-alb-sg` → `ereon-ecs-sg` → `ereon-rds-sg`). Credentials and endpoints are read from SSM Parameter Store when the task starts, and the container logs go to CloudWatch.
+
+**Why this architecture.**
+
+| Choice | Why |
+| :--- | :--- |
+| Frontend on S3 + CloudFront | The app is a static build, so there is no server to run. The bucket stays private and only CloudFront can read it, and the CDN gives HTTPS and caching at almost no cost. |
+| Application Load Balancer in front of the API | It terminates HTTPS with the managed certificate, so the app never handles certificates. It only routes to tasks that pass the `GET /api/health` check, enables rolling deployments without downtime and spreads traffic across two availability zones. |
+| ECS on Fargate | There are no servers to patch or size. The same Docker image that runs locally runs in production, and the task definition injects the settings and the secrets. |
+| Public subnets without a NAT Gateway | A NAT Gateway has a fixed hourly cost. Tasks get a public IP only to reach the registry, the secret store and the payment gateway, while the security groups let in only the load balancer. The database is not publicly accessible. |
+| Secrets in Parameter Store | Free, encrypted and read at startup. Nothing sensitive is stored in the image, the repository or the task definition. |
+| Cloudflare for DNS | It avoids the cost of a managed DNS service and adds its proxy in front of the API. |
+
+This architecture prioritizes operational simplicity, security, and cost control over premature optimization. Running the backend as a containerized monolith on ECS Fargate may carry a slightly higher baseline cost than serverless functions like AWS Lambda, but it avoids the complexity of splitting the application into microservices, eliminates cold starts, and keeps PostgreSQL connection handling straightforward. By pairing managed services with strict security groups and zero-cost alternatives where possible, the setup stays production-ready, easy for a single developer to maintain, and simple to scale horizontally without over-engineering.
 
 ---
 
 ## 2. Data model
 
-_Pending._
+```mermaid
+erDiagram
+    PRODUCTS ||--o{ TRANSACTIONS : "is bought in"
+    CUSTOMERS ||--o{ TRANSACTIONS : places
+    CUSTOMERS ||--o{ DELIVERIES : receives
+    TRANSACTIONS ||--o| DELIVERIES : "creates once approved"
+
+    PRODUCTS {
+        uuid id PK
+        varchar name
+        text description
+        int price_in_cents "CHECK >= 0"
+        int stock "CHECK >= 0"
+        varchar image_url
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CUSTOMERS {
+        uuid id PK
+        varchar document_type "UNIQUE with document_number"
+        varchar document_number
+        varchar full_name
+        varchar email
+        varchar phone
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    TRANSACTIONS {
+        uuid id PK
+        varchar reference UK "idempotency key"
+        uuid product_id FK
+        uuid customer_id FK
+        int quantity "CHECK > 0"
+        int installments "CHECK 1 to 36"
+        int product_amount_cents
+        int base_fee_cents
+        int delivery_fee_cents
+        int total_amount_cents
+        varchar status "PENDING, APPROVED, DECLINED, ERROR, VOIDED"
+        varchar external_id "gateway id, null until charged"
+        varchar ip_address
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    DELIVERIES {
+        uuid id PK
+        uuid transaction_id FK, UK
+        uuid customer_id FK
+        varchar address
+        varchar city
+        varchar region
+        varchar postal_code
+        varchar status "ASSIGNED, SHIPPED, DELIVERED"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- **Fully relational.** No `JSONB` columns; every field is a typed column.
+- **Money in integer cents.** Each transaction stores its own breakdown (product, base fee, delivery fee and total), so a later price change never alters past orders.
+- **Idempotency.** `transactions.reference` is unique, which makes creating the same order twice return the same row.
+- **Statuses as `varchar` with a `CHECK`.** It validates the allowed values without a database enum type, so adding a status is a plain migration.
+- **Stock cannot go negative.** The `CHECK` on `products.stock` backs up the conditional `UPDATE ... WHERE stock >= qty`, so overselling is impossible even if the application logic fails.
+- **A delivery exists only for approved payments.** It is unique per transaction and is created in the same database transaction as the stock discount.
+- **History is protected.** Every foreign key is `ON DELETE RESTRICT`, so a product or customer with orders cannot be deleted.
+- **Customers are upserted** by document type and number.
+- **No card data is stored**, neither the number, the CVC nor the expiry.
 
 ---
 
@@ -106,10 +365,20 @@ Implemented in the backend:
 - **Security headers:** `helmet` with CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy` and `X-Frame-Options`.
 - **CORS:** explicit allowed origins from `CORS_ORIGIN`; wildcards are rejected at startup.
 - **Input validation:** `ValidationPipe` with `whitelist` and `forbidNonWhitelisted`; unknown fields return `400`.
-- **Rate limiting:** global limit per client (`THROTTLE_TTL`, `THROTTLE_LIMIT`).
+- **Rate limiting:** a global limit per client and a stricter one on the payment endpoint (5 per minute by default).
+- **Client address:** the IP stored with each transaction comes only from the trusted proxy chain (`TRUST_PROXY_HOPS`) and is validated, so a spoofed `X-Forwarded-For` is ignored.
+- **Card data:** never stored or logged. The frontend keeps it in memory, and the backend encrypts it (JWE) before sending it to the gateway.
+- **Secrets:** kept in the cloud secret store and injected when the container starts; nothing sensitive is committed or baked into the image.
 - **Safe errors:** unexpected failures return `500` with no internal details.
 - **Log hygiene:** sensitive fields (card data, keys, authorization) are redacted from logs, and request headers are never logged.
 - **Traceability:** `X-Trace-Id` is propagated to every log line and returned in the response.
+
+Implemented at the frontend hosting. The static files have no server of their own, so the CDN adds these headers to every response through a response headers policy:
+
+- **Content Security Policy:** scripts, styles, images and fonts only from the site's own origin, requests only to its own origin and the API, no framing, no plugins and `upgrade-insecure-requests`.
+- **Other headers:** HSTS (one year, subdomains included), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and `Cross-Origin-Opener-Policy: same-origin`.
+
+With them the site scores A+ in the [MDN HTTP Observatory](https://developer.mozilla.org/en-US/observatory).
 
 ---
 
