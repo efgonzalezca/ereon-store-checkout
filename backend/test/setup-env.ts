@@ -1,0 +1,23 @@
+import 'reflect-metadata';
+
+process.env.NODE_ENV = 'test';
+process.env.PORT = '3000';
+process.env.CORS_ORIGIN = 'http://localhost:5173';
+process.env.THROTTLE_TTL = '60';
+process.env.THROTTLE_LIMIT = '10';
+process.env.DB_HOST = 'localhost';
+process.env.DB_PORT = '5432';
+process.env.DB_USER = 'test_user';
+process.env.DB_PASS = 'test_password';
+process.env.DB_NAME = 'test_db';
+process.env.DB_SSL = 'false';
+process.env.PAYMENT_API_URL = 'https://gateway.test';
+process.env.PAYMENT_PUBLIC_KEY = 'pub_test_mock_key';
+process.env.TRUST_PROXY_HOPS = '0';
+process.env.BASE_FEE_CENTS = '300000';
+process.env.DELIVERY_FEE_CENTS = '1200000';
+process.env.PAYMENT_PRIVATE_KEY = 'prv_test_mock_key';
+process.env.PAYMENT_INTEGRITY_KEY = 'test_integrity_mock_secret';
+process.env.PAYMENT_CURRENCY = 'COP';
+process.env.THROTTLE_PAY_TTL = '60';
+process.env.THROTTLE_PAY_LIMIT = '100';
